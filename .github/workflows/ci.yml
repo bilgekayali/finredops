@@ -31,6 +31,7 @@ jobs:
         run: |
           python -m compileall -q src tests
           python -m finredops --help | grep -q "promote-reviewed-report"
+          python -m finredops --help | grep -q "verify-release-checksums"
           python -m finredops validate-engagement examples/synthetic_engagement.json
           python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
           python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
@@ -52,7 +53,7 @@ jobs:
           python -m finredops render-report demo-output/regulatory-report.json --output demo-output/verified-report.md
           python -m finredops report-template --type vendor_source_code_review --output demo-output/vendor-source-template.json
           python -m finredops report-template --type vendor_application_penetration --output demo-output/vendor-app-template.json
-          python -m finredops demo-reviewed-report --sarif examples/synthetic_sast.sarif.json --output-dir demo-output/reviewed
+          python -m finredops demo-reviewed-report --output-dir demo-output/reviewed
           python -m finredops validate-report demo-output/reviewed/regulatory-report.json
 
       - name: Enforce simulation-runner import boundary
@@ -123,3 +124,50 @@ jobs:
             demo-output/reviewed/regulatory-report.md
             demo-output/reviewed/promotion-manifest.json
             demo-output/reviewed/reviews/*.json
+
+  package-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build wheel and source distribution
+        run: |
+          python -m pip install build
+          python -m build
+
+      - name: Install wheel in a clean environment
+        run: |
+          python -m venv /tmp/finredops-wheel
+          /tmp/finredops-wheel/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "export-examples"
+
+      - name: Verify packaged examples and bundled demo
+        run: |
+          /tmp/finredops-wheel/bin/finredops export-examples --output-dir /tmp/finredops-examples
+          /tmp/finredops-wheel/bin/finredops validate-engagement /tmp/finredops-examples/synthetic_engagement.json
+          /tmp/finredops-wheel/bin/finredops validate-plan /tmp/finredops-examples/synthetic_ai_plan.json --engagement /tmp/finredops-examples/synthetic_engagement.json
+          /tmp/finredops-wheel/bin/finredops demo-reviewed-report --output-dir /tmp/finredops-reviewed
+          /tmp/finredops-wheel/bin/finredops validate-report /tmp/finredops-reviewed/regulatory-report.json
+
+      - name: Generate and verify release checksums
+        run: |
+          cd dist
+          sha256sum *.whl *.tar.gz > CHECKSUMS.sha256
+          cd ..
+          /tmp/finredops-wheel/bin/finredops verify-release-checksums --manifest dist/CHECKSUMS.sha256 --directory dist
+
+      - name: Upload package smoke artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: finredops-package-smoke
+          if-no-files-found: error
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/CHECKSUMS.sha256
