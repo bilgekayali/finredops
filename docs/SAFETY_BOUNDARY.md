@@ -12,6 +12,9 @@
 - institution-policy preflight and durable SQLite revisions;
 - deterministic redaction of likely secrets and regulated identifiers;
 - source-linked regulatory crosswalk and audit-support report templates;
+- human-confirmed BDDK/SPK/KVKK/TSE/ISO applicability decisions;
+- metadata-only evidence manifest, chain of custody, report delta and
+  deterministic offline-verifiable review dossier;
 - a local, read-only GET/HEAD API with no mutation endpoint;
 - reserved `.test` examples that do not identify a real institution.
 
@@ -47,7 +50,8 @@ Every built-in receipt is generated from a bundled fixture and includes
 `simulation: true` and a disclaimer. It must not be represented as a finding,
 assurance opinion, penetration-test result, or certification.
 
-Regulatory reports are audit-support drafts. BDDK/SPK applicability and delivery
-deadlines require legal/compliance confirmation; ISO objectives require the
-institution's licensed standard; `approved` and `issued` reports require two
-distinct human approvals.
+Regulatory reports are audit-support drafts. BDDK/SPK applicability, TSE
+TS 13638/T2 scope and delivery deadlines require authorized human confirmation;
+TSE and ISO objectives require authorized/licensed standards; `approved` and
+`issued` reports require two distinct human approvals. The review ZIP embeds
+metadata and opaque locators only, never raw evidence.

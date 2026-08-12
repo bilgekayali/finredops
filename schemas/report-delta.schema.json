@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/report-delta.schema.json",
+  "title": "FinRedOps report revision delta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "baseline_report_id", "baseline_digest", "current_report_id",
+    "current_digest", "new_findings", "missing_findings", "closed_findings",
+    "reopened_findings", "severity_increases", "severity_decreases",
+    "status_changes", "retest_changes", "control_regressions",
+    "control_improvements", "has_regressions", "delta_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.report-delta.v1"},
+    "baseline_report_id": {"type": "string", "minLength": 1},
+    "baseline_digest": {"$ref": "#/$defs/digest"},
+    "current_report_id": {"type": "string", "minLength": 1},
+    "current_digest": {"$ref": "#/$defs/digest"},
+    "new_findings": {"$ref": "#/$defs/ids"},
+    "missing_findings": {"$ref": "#/$defs/ids"},
+    "closed_findings": {"$ref": "#/$defs/ids"},
+    "reopened_findings": {"$ref": "#/$defs/ids"},
+    "severity_increases": {"$ref": "#/$defs/changes"},
+    "severity_decreases": {"$ref": "#/$defs/changes"},
+    "status_changes": {"$ref": "#/$defs/changes"},
+    "retest_changes": {"$ref": "#/$defs/changes"},
+    "control_regressions": {"$ref": "#/$defs/changes"},
+    "control_improvements": {"$ref": "#/$defs/changes"},
+    "has_regressions": {"type": "boolean"},
+    "delta_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "changes": {"type": "array", "items": {"$ref": "#/$defs/change"}},
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "previous", "current"],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1},
+        "previous": {"type": "string", "minLength": 1},
+        "current": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

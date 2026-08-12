@@ -4,4 +4,9 @@
 /src/finredops/runner.py @bilgekayali
 /src/finredops/regulations.py @bilgekayali
 /src/finredops/reporting.py @bilgekayali
+/src/finredops/applicability.py @bilgekayali
+/src/finredops/custody.py @bilgekayali
+/src/finredops/diffing.py @bilgekayali
+/src/finredops/bundle.py @bilgekayali
+/schemas/ @bilgekayali
 /.github/workflows/ @bilgekayali

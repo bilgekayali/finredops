@@ -13,7 +13,7 @@ The model proposes typed actions; deterministic policy enforces scope, time,
 separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> Version 0.2 remains deliberately **simulation-only**. It has no exploit engine,
+> Version 0.3 remains deliberately **simulation-only**. It has no exploit engine,
 > target discovery, credential attacks, arbitrary shell, or network-capable
 > test runner. The included dashboard uses reserved `.test` names and synthetic
 > evidence. It is not a live penetration-testing engine, legal opinion,
@@ -41,7 +41,7 @@ flowchart TD
 
 ## Control model
 
-| Boundary | v0.2 behavior |
+| Boundary | v0.3 behavior |
 |---|---|
 | AI authority | May propose JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -53,8 +53,11 @@ flowchart TD
 | Institution preflight | Blocks unsafe scope breadth, production risk, contact, rate, and TTL settings |
 | Evidence handling | Deterministically redacts likely secrets, e-mail, valid IBAN and payment-card identifiers |
 | Persistence | Append-only SQLite snapshot revisions plus exact audit-prefix verification |
-| Regulatory assurance | Source-linked BDDK, current SPK VII-128.10, KVKK and ISO/IEC control conclusions |
+| Regulatory assurance | Human-confirmed BDDK, current SPK VII-128.10, KVKK, TSE TS 13638/T2 and ISO/IEC applicability plus source-linked conclusions |
 | Reporting | Annual bank, vendor source-code, vendor application and remediation templates |
+| Evidence custody | Opaque locators, content digests, retention metadata and a separate append-only hash chain |
+| Revision control | New/missing/closed/reopened findings plus severity, retest and control deltas |
+| Delivery | Deterministic metadata-only ZIP with offline path, size, digest and embedded-document verification |
 | Kill switch | Control or execution approver can pause immediately |
 | Accountability | Append-only hash chain with offline verification |
 
@@ -66,6 +69,9 @@ Only Python 3.11+ is required; the package has no runtime dependencies.
 python -m pip install -e .
 python -m finredops demo --output demo-output
 python -m finredops verify-audit demo-output/audit.jsonl
+python -m finredops validate-applicability demo-output/applicability.json
+python -m finredops validate-evidence-manifest demo-output/evidence-manifest.json
+python -m finredops verify-bundle demo-output/audit-dossier.zip
 python -m finredops verify-store demo-output/finredops.db FRX-DEMO-2026-001
 python -m finredops validate-report demo-output/regulatory-report.json
 python -m finredops render-report demo-output/regulatory-report.json \
@@ -81,7 +87,9 @@ Open `http://127.0.0.1:8080`. The demo creates:
 - three simulated evidence receipts and one intentional policy denial;
 - a standalone operations dashboard and read-only local API;
 - a JSON snapshot, hash-chained audit JSONL, and SQLite durable store;
-- a Turkish regulatory crosswalk plus Markdown/JSON audit-support report.
+- a BDDK/SPK/KVKK/TSE/ISO regulatory crosswalk plus Markdown/JSON report;
+- a human-confirmed applicability document and metadata-only custody manifest;
+- a deterministic, offline-verifiable human-review audit dossier.
 
 Create a fillable report template for any supported assessment:
 
@@ -92,6 +100,21 @@ python -m finredops report-template \
 python -m finredops validate-engagement examples/synthetic_engagement.json
 python -m finredops validate-plan examples/synthetic_ai_plan.json \
   --engagement examples/synthetic_engagement.json
+```
+
+Compare a remediation report with its baseline, or rebuild a review dossier
+from approved JSON artifacts:
+
+```bash
+python -m finredops compare-reports baseline-report.json current-report.json \
+  --output report-delta.json
+python -m finredops build-bundle \
+  --report current-report.json \
+  --applicability applicability.json \
+  --evidence-manifest evidence-manifest.json \
+  --audit audit.jsonl \
+  --output audit-dossier.zip \
+  --purpose human_review
 ```
 
 Docker is optional:
@@ -110,15 +133,19 @@ src/finredops/
   catalog.py      closed catalog of typed actions
   runner.py       network-free synthetic evidence runner
   evidence.py     sensitive-data minimization boundary
+  custody.py      metadata-only evidence registry and custody hash chain
   audit.py        append-only SHA-256 hash chain
   store.py        transactional SQLite revisions and audit persistence
   service.py      engagement and approval state machine
   profiles.py     financial-institution preflight policy
   regulations.py versioned Turkish regulatory control registry
+  applicability.py human-confirmed authority/standards scope decisions
   reporting.py   audit-support validation, crosswalk, and renderer
+  diffing.py      report revision and remediation delta
+  bundle.py       deterministic audit dossier builder and verifier
   api.py          loopback-first read-only API
   dashboard.py    self-contained operations interface
-schemas/          versioned engagement, plan, and report JSON contracts
+schemas/          versioned engagement, plan, report, applicability, custody, delta, and dossier contracts
 docs/             architecture, safety, reporting, and regulatory mapping
 examples/         synthetic, reserved-namespace input documents
 tests/            policy, integrity, boundary, and end-to-end tests
@@ -134,7 +161,9 @@ tested, evidenced, independently reviewed, and signed by authorized humans.
 Mappings do not establish legal applicability, certification, or compliance.
 See [Türkiye regulatory profile](docs/TURKEY_REGULATORY_MAPPING.md),
 [Reporting model](docs/REPORTING_MODEL.md), [Safety boundary](docs/SAFETY_BOUNDARY.md),
-[Threat model](docs/THREAT_MODEL.md), and [Roadmap](docs/ROADMAP.md).
+[Applicability](docs/APPLICABILITY.md), [Chain of custody](docs/CHAIN_OF_CUSTODY.md),
+[Audit dossier](docs/AUDIT_DOSSIER.md), [Threat model](docs/THREAT_MODEL.md), and
+[Roadmap](docs/ROADMAP.md).
 
 ## Reference baseline
 
@@ -144,6 +173,7 @@ The design is informed by, but does not claim conformance with:
 - [BDDK Bilgi Sistemlerine İlişkin Sızma Testleri Hakkında Genelge 2012/1](https://www.bddk.org.tr/Mevzuat/DokumanGetir/915)
 - [SPK Bilgi Sistemleri Yönetimine İlişkin Usul ve Esaslar Tebliği VII-128.10](https://www.resmigazete.gov.tr/eskiler/2025/03/20250313-8.htm)
 - [KVKK 6698 sayılı Kanun Madde 12](https://www.kvkk.gov.tr/Icerik/2097/Kanun-doc) and [Personal Data Security Guide](https://www.kvkk.gov.tr/SharedFolderServer/CMSFiles/7512d0d4-f345-41cb-bc5b-8d5cf125e3a1.pdf)
+- [TSE Bilişim Teknolojileri Sızma Testleri](https://www.tse.org.tr/sizma-testleri/) and [TS 13638/T2 firm certification prerequisites](https://www.tse.org.tr/sizma-testi-belgelendirmesi/) (licensed standard required for clause-level implementation)
 - [ISO/IEC 27001:2022](https://www.iso.org/standard/27001) and [ISO/IEC 27002:2022](https://www.iso.org/standard/75652.html) (licensed text required for implementation)
 - [NIST SP 800-115 — Technical Guide to Information Security Testing and Assessment](https://csrc.nist.gov/pubs/sp/800/115/final)
 - [DORA, including Article 26 on threat-led penetration testing](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32022R2554)

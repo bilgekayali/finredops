@@ -23,6 +23,7 @@ class Authority(StringEnum):
     BDDK = "BDDK"
     SPK = "SPK"
     KVKK = "KVKK"
+    TSE = "TSE"
     ISO = "ISO/IEC"
 
 
@@ -75,6 +76,11 @@ _ALL_TESTS = (
     AssessmentType.VENDOR_APPLICATION_PENETRATION,
     AssessmentType.REMEDIATION_VERIFICATION,
 )
+_PENETRATION_TESTS = (
+    AssessmentType.ANNUAL_BANK_PENETRATION,
+    AssessmentType.VENDOR_APPLICATION_PENETRATION,
+    AssessmentType.REMEDIATION_VERIFICATION,
+)
 
 
 def turkey_financial_regulatory_profile() -> RegulatoryProfile:
@@ -92,6 +98,8 @@ def turkey_financial_regulatory_profile() -> RegulatoryProfile:
         "https://www.kvkk.gov.tr/SharedFolderServer/CMSFiles/"
         "7512d0d4-f345-41cb-bc5b-8d5cf125e3a1.pdf"
     )
+    tse_testing = "https://www.tse.org.tr/sizma-testleri/"
+    tse_certification = "https://www.tse.org.tr/sizma-testi-belgelendirmesi/"
     iso_27001 = "https://www.iso.org/standard/27001"
     iso_27002 = "https://www.iso.org/standard/75652.html"
 
@@ -290,6 +298,54 @@ def turkey_financial_regulatory_profile() -> RegulatoryProfile:
             kvkk_guide,
         ),
         ControlReference(
+            "TR-TSE-TS13638-T2-QUALIFICATION",
+            Authority.TSE,
+            "TS 13638/T2 Bilgi Teknolojileri - Güvenlik Teknikleri - Sızma testi yapan personel ve firmalar için şartlar",
+            "TSE'nin kamuya açık firma belgelendirme ön koşulları",
+            "Sızma testi hizmetini sunan firmanın güncel TSE belge seviyesi ve kapsamı ile görevlendirilen personelin yeterliliklerinin, ISO/IEC 27001 koşulunun ve sözleşme kayıtlarının doğrulanması.",
+            _PENETRATION_TESTS,
+            (
+                "TSE certificate number, level, scope and validity",
+                "assigned personnel qualification matrix",
+                "applicable ISO/IEC 27001 certificate or requirement evidence",
+                "signed contract, confidentiality and engagement records",
+            ),
+            tse_certification,
+            "TSE belgesi tek başına düzenleyici uyum veya test sonucunun yeterliliği anlamına gelmez; güncel belge kapsamı insan incelemesiyle doğrulanmalıdır.",
+        ),
+        ControlReference(
+            "TR-TSE-TS13638-T2-PROCESS",
+            Authority.TSE,
+            "TS 13638/T2 Bilgi Teknolojileri - Güvenlik Teknikleri - Sızma testi yapan personel ve firmalar için şartlar",
+            "Lisanslı standardın güncel çalışma ve raporlama şartları",
+            "Kullanılan lisanslı standardın sürümünün kaydedilmesi ve uygulanabilir çalışma, kanıt ve raporlama şartlarının insan tarafından onaylanmış bir madde matrisiyle izlenmesi.",
+            _PENETRATION_TESTS,
+            (
+                "licensed standard identifier, revision and access record",
+                "human-reviewed clause applicability matrix",
+                "project records mapped to applicable clauses",
+                "reviewer approval and documented exceptions",
+            ),
+            tse_certification,
+            "TSE, standardın temin edilmesini ve tüm şartların karşılanmasını ister. Lisanslı metin bu projede çoğaltılmaz; kesin madde numaraları yetkili nüshadan eklenmelidir.",
+        ),
+        ControlReference(
+            "TR-TSE-SIZMA-TESTI-KAPSAMI",
+            Authority.TSE,
+            "TSE Bilişim Teknolojileri Sızma Testleri",
+            "Güncel Sızma Testi Kapsamı dokümanı",
+            "Onaylı test kapsamının TSE'nin güncel kapsam dokümanıyla karşılaştırılması; dahil, hariç ve uygulanamaz alanların gerekçeli ve kanıt bağlantılı kaydedilmesi.",
+            _PENETRATION_TESTS,
+            (
+                "approved scope and rules of engagement",
+                "current TSE scope document link, access date and digest",
+                "included, excluded and not-applicable coverage matrix",
+                "scope owner and reviewer approval",
+            ),
+            tse_testing,
+            "TSE bağlantısındaki kapsam dokümanı güncellenebileceğinden her çalışma için erişim tarihi, sürüm veya özet değer ve onaylı farklar saklanmalıdır.",
+        ),
+        ControlReference(
             "ISO27001-CLAUSES-6.1-8.1-9.1-10.2",
             Authority.ISO,
             "ISO/IEC 27001:2022",
@@ -388,12 +444,14 @@ def turkey_financial_regulatory_profile() -> RegulatoryProfile:
     return RegulatoryProfile(
         profile_id="turkey-financial-assurance-v1",
         title="Türkiye Finansal Kuruluşlar Güvenlik Testi Çapraz Kontrol Profili",
-        version="1.0.0",
+        version="1.1.0",
         verified_on="2026-08-12",
         controls=controls,
         legal_notice=(
             "Bu profil mevzuat ve standart gereksinimlerinin teknik test kanıtlarına eşlenmesine "
             "yardımcı olur; hukuki görüş, düzenleyici onay, bağımsız denetim veya ISO uygunluk "
-            "beyanı değildir. Kuruluşun tabiiyet ve istisnaları hukuk/uyum birimince doğrulanmalıdır."
+            "beyanı değildir. Kuruluşun tabiiyet ve istisnaları hukuk/uyum birimince doğrulanmalıdır. "
+            "ISO standartları ve TS 13638/T2 gibi lisanslı metinler yetkili nüshalardan uygulanmalı; "
+            "bu profildeki kısa özetler standardın yerine kullanılmamalıdır."
         ),
     )

@@ -536,8 +536,8 @@ def render_report_markdown(
             f"- Yapısal doğrulama: `{'geçti' if validation.valid else 'başarısız'}`",
             f"- Yayıma hazır: `{'evet' if validation.ready_for_issue else 'hayır'}`",
             f"- İnsan onay kayıtları: {', '.join(report.human_approvals) or 'Henüz yok'}",
-            "- BDDK/SPK tabiiyeti, istisnalar ve teslim süreleri her çalışma öncesinde hukuk/uyum tarafından doğrulanmalıdır.",
-            "- ISO/IEC kontrol metinleri kuruluşun lisanslı standart nüshasından teyit edilmelidir.",
+            "- BDDK/SPK tabiiyeti, TSE şartname kapsamı, istisnalar ve teslim süreleri her çalışma öncesinde hukuk/uyum ve yetkili test sorumlularınca doğrulanmalıdır.",
+            "- TS 13638/T2 ve ISO/IEC kontrol metinleri kuruluşun yetkili/lisanslı standart nüshalarından teyit edilmelidir.",
             "- Ham kanıtlar rapora gömülmemeli; erişim kontrollü kanıt deposunda tutulmalıdır.",
             "",
         ]
@@ -607,7 +607,12 @@ def demo_regulatory_report(*, issued_at: datetime | None = None) -> AssessmentRe
         lead_tester="Synthetic Lead Tester",
         independence_declaration="Test ekibinin geliştirme ve işletim ekiplerinden ayrı olduğu sentetik senaryo kapsamında beyan edilmiştir.",
         tester_qualifications=("qualification-evidence://synthetic/lead-tester",),
-        methodology=("BDDK 2012/1 scope matrix", "risk-based safe validation", "evidence-based retest"),
+        methodology=(
+            "BDDK 2012/1 scope matrix",
+            "TSE TS 13638/T2 qualification and scope matrix",
+            "risk-based safe validation",
+            "evidence-based retest",
+        ),
         coverage_areas=tuple(sorted(REQUIRED_COVERAGE[AssessmentType.ANNUAL_BANK_PENETRATION])),
         executive_summary=(
             "Bu belge, canlı hedefe erişmeden üretilen sentetik kanıtlarla FinRedOps raporlama "

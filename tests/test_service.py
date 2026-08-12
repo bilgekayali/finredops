@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from finredops.audit import AuditChain
+from finredops.bundle import verify_audit_bundle
+from finredops.custody import EvidenceManifest
 from finredops.demo import build_demo_service, write_demo
 from finredops.models import Role
 
@@ -51,6 +54,13 @@ class ServiceIntegrationTests(unittest.TestCase):
             self.assertIn("SPK", paths["report_markdown"].read_text())
             self.assertTrue(paths["database"].exists())
             self.assertTrue(paths["crosswalk"].exists())
+            self.assertTrue(paths["applicability"].exists())
+            self.assertTrue(paths["audit_bundle"].exists())
+            evidence = EvidenceManifest.from_dict(
+                json.loads(paths["evidence_manifest"].read_text())
+            )
+            self.assertEqual(evidence.verify(), (True, ()))
+            self.assertTrue(verify_audit_bundle(paths["audit_bundle"]).valid)
             valid, errors = AuditChain.read(paths["audit"]).verify()
         self.assertTrue(valid, errors)
 

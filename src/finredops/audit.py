@@ -85,6 +85,7 @@ class AuditChain:
     def verify(self) -> tuple[bool, tuple[str, ...]]:
         errors: list[str] = []
         previous_hash = GENESIS_HASH
+        previous_timestamp: datetime | None = None
         for expected_sequence, event in enumerate(self._events, start=1):
             if event.sequence != expected_sequence:
                 errors.append(f"Event {expected_sequence}: invalid sequence {event.sequence}.")
@@ -93,7 +94,10 @@ class AuditChain:
             expected_hash = sha256_digest(event.hash_payload())
             if event.event_hash != expected_hash:
                 errors.append(f"Event {expected_sequence}: event hash mismatch.")
+            if previous_timestamp is not None and event.timestamp < previous_timestamp:
+                errors.append(f"Event {expected_sequence}: timestamp moves backwards.")
             previous_hash = event.event_hash
+            previous_timestamp = event.timestamp
         return not errors, tuple(errors)
 
     def to_jsonl(self) -> str:
@@ -110,15 +114,43 @@ class AuditChain:
                 continue
             try:
                 raw = json.loads(line)
+                expected_fields = {
+                    "sequence",
+                    "timestamp",
+                    "actor_id",
+                    "event_type",
+                    "engagement_id",
+                    "payload",
+                    "previous_hash",
+                    "event_hash",
+                }
+                if not isinstance(raw, dict) or set(raw) != expected_fields:
+                    raise ValueError("Audit event fields do not match the strict schema.")
+                if not isinstance(raw["sequence"], int) or isinstance(
+                    raw["sequence"], bool
+                ):
+                    raise ValueError("Audit sequence must be an integer.")
+                for key in (
+                    "timestamp",
+                    "actor_id",
+                    "event_type",
+                    "engagement_id",
+                    "previous_hash",
+                    "event_hash",
+                ):
+                    if not isinstance(raw[key], str) or not raw[key]:
+                        raise ValueError(f"Audit {key} must be a non-empty string.")
+                if not isinstance(raw["payload"], Mapping):
+                    raise ValueError("Audit payload must be an object.")
                 event = AuditEvent(
-                    sequence=int(raw["sequence"]),
+                    sequence=raw["sequence"],
                     timestamp=parse_datetime(raw["timestamp"]),
-                    actor_id=str(raw["actor_id"]),
-                    event_type=str(raw["event_type"]),
-                    engagement_id=str(raw["engagement_id"]),
+                    actor_id=raw["actor_id"],
+                    event_type=raw["event_type"],
+                    engagement_id=raw["engagement_id"],
                     payload=freeze_value(raw["payload"]),
-                    previous_hash=str(raw["previous_hash"]),
-                    event_hash=str(raw["event_hash"]),
+                    previous_hash=raw["previous_hash"],
+                    event_hash=raw["event_hash"],
                 )
             except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
                 raise ValueError(f"Invalid audit event on line {line_number}: {exc}") from exc

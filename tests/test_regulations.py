@@ -19,9 +19,26 @@ class RegulationsTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         self.assertTrue(all(control.source_url.startswith("https://") for control in self.profile.controls))
 
-    def test_all_four_authorities_are_present(self) -> None:
+    def test_all_five_authorities_are_present(self) -> None:
         authorities = {control.authority for control in self.profile.controls}
         self.assertEqual(authorities, set(Authority))
+
+    def test_tse_profile_uses_current_public_references(self) -> None:
+        tse_controls = [
+            control for control in self.profile.controls if control.authority == Authority.TSE
+        ]
+        self.assertEqual(len(tse_controls), 3)
+        self.assertTrue(all("TS 13638/T2" in item.instrument for item in tse_controls[:2]))
+        self.assertEqual(
+            {item.source_url for item in tse_controls},
+            {
+                "https://www.tse.org.tr/sizma-testleri/",
+                "https://www.tse.org.tr/sizma-testi-belgelendirmesi/",
+            },
+        )
+        self.assertTrue(
+            any("lisans" in item.applicability_note.casefold() for item in tse_controls)
+        )
 
     def test_current_spk_instrument_replaces_old_reference(self) -> None:
         document = canonical_json(self.profile)

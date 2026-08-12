@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/audit-bundle-manifest.schema.json",
+  "title": "FinRedOps audit dossier manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "bundle_id", "created_at", "purpose", "report_id",
+    "report_digest", "assessment_type", "regulatory_profile_id",
+    "regulatory_profile_digest", "applicability_digest",
+    "evidence_manifest_digest", "audit_event_count", "audit_chain_tip",
+    "entries", "ready_for_submission", "submission_blockers",
+    "raw_evidence_embedded", "cryptographic_signature_attached"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.audit-bundle.v1"},
+    "bundle_id": {"type": "string", "pattern": "^FRX-BND-[A-F0-9]{20}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "purpose": {"enum": ["human_review", "regulatory_submission", "archive"]},
+    "report_id": {"type": "string", "minLength": 1},
+    "report_digest": {"$ref": "#/$defs/digest"},
+    "assessment_type": {
+      "enum": [
+        "annual_bank_penetration", "vendor_source_code_review",
+        "vendor_application_penetration", "remediation_verification"
+      ]
+    },
+    "regulatory_profile_id": {"type": "string", "minLength": 1},
+    "regulatory_profile_digest": {"$ref": "#/$defs/digest"},
+    "applicability_digest": {"$ref": "#/$defs/digest"},
+    "evidence_manifest_digest": {"$ref": "#/$defs/digest"},
+    "audit_event_count": {"type": "integer", "minimum": 0},
+    "audit_chain_tip": {"type": "string", "pattern": "^$|^[a-f0-9]{64}$"},
+    "entries": {"type": "array", "minItems": 7, "maxItems": 8, "items": {"$ref": "#/$defs/entry"}},
+    "ready_for_submission": {"type": "boolean"},
+    "submission_blockers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "raw_evidence_embedded": {"const": false},
+    "cryptographic_signature_attached": {"const": false}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "path": {
+          "enum": [
+            "README.txt", "applicability.json", "audit.jsonl",
+            "evidence-manifest.json", "regulatory-crosswalk.json",
+            "report-delta.json", "report.json", "report.md"
+          ]
+        },
+        "sha256": {"$ref": "#/$defs/digest"},
+        "size_bytes": {"type": "integer", "minimum": 0, "maximum": 5000000},
+        "media_type": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

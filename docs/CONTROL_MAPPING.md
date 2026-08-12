@@ -5,7 +5,8 @@ readiness, or legal interpretation. Each institution must establish its own
 applicable requirements and obtain independent review.
 
 Turkish financial-sector clauses are maintained separately as executable,
-source-linked mappings. See [Türkiye financial regulatory profile](TURKEY_REGULATORY_MAPPING.md)
+source-linked mappings, including TSE TS 13638/T2 public prerequisites and
+licensed-text evidence handling. See [Türkiye financial regulatory profile](TURKEY_REGULATORY_MAPPING.md)
 and [reporting model](REPORTING_MODEL.md).
 
 | FinRedOps design element | Reference concept | Demonstrated artifact |

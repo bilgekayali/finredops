@@ -28,6 +28,9 @@ def _openapi_document() -> dict[str, Any]:
         "/api/v1/engagement": "Synthetic engagement snapshot",
         "/api/v1/preflight": "Institution policy preflight report",
         "/api/v1/regulatory/profile": "Versioned Turkish regulatory crosswalk profile",
+        "/api/v1/regulatory/applicability": "Human-confirmed applicability decisions",
+        "/api/v1/evidence/manifest": "Metadata-only evidence custody manifest",
+        "/api/v1/audit-bundle/status": "Audit dossier readiness and verification status",
         "/api/v1/reporting/capabilities": "Supported report types and mandatory coverage",
         "/api/v1/audit/verification": "Audit-chain verification result",
     }
@@ -68,6 +71,7 @@ def create_read_only_server(
     snapshot_digest = sha256_digest(snapshot)
     audit_events = list(snapshot.get("audit", []))
     audit_valid = _verify_snapshot_audit(audit_events)
+    assurance = dict(snapshot.get("assurance", {}))
     routes: dict[str, tuple[str, bytes, str | None]] = {
         "/": ("text/html; charset=utf-8", dashboard, snapshot_digest),
         "/index.html": ("text/html; charset=utf-8", dashboard, snapshot_digest),
@@ -110,6 +114,21 @@ def create_read_only_server(
             _json_bytes(snapshot.get("regulatory_profile", {})),
             None,
         ),
+        "/api/v1/regulatory/applicability": (
+            "application/json; charset=utf-8",
+            _json_bytes(assurance.get("applicability", {})),
+            None,
+        ),
+        "/api/v1/evidence/manifest": (
+            "application/json; charset=utf-8",
+            _json_bytes(assurance.get("evidence_manifest", {})),
+            None,
+        ),
+        "/api/v1/audit-bundle/status": (
+            "application/json; charset=utf-8",
+            _json_bytes(assurance.get("audit_bundle", {})),
+            None,
+        ),
         "/api/v1/reporting/capabilities": (
             "application/json; charset=utf-8",
             _json_bytes(
@@ -120,6 +139,8 @@ def create_read_only_server(
                         for item in AssessmentType
                     },
                     "human_issue_approval_required": True,
+                    "report_delta_supported": True,
+                    "metadata_only_audit_bundle_supported": True,
                     "audit_support_only": True,
                 }
             ),
@@ -169,7 +190,7 @@ def create_read_only_server(
             body = _json_bytes(
                 {
                     "error": "method_not_allowed",
-                    "message": "The v0.2 demonstration API is deliberately read-only.",
+                    "message": "The v0.3 demonstration API is deliberately read-only.",
                 }
             )
             self.send_response(405)

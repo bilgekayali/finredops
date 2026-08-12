@@ -9,6 +9,7 @@ evidence integrity, safety, and operational governance.
 python -m pip install -e .
 python -m unittest discover -s tests -v
 python -m finredops demo --output demo-output
+python -m finredops verify-bundle demo-output/audit-dossier.zip
 ```
 
 The core has no runtime dependency outside the Python standard library.
@@ -29,3 +30,7 @@ Every behavior change should include tests. Documentation must distinguish
 implemented controls from future design goals and must not claim regulatory
 certification.
 
+Changes to regulatory mappings must cite an official source, record a review
+date, avoid reproducing licensed standards and include an applicability or
+validation test. Changes to evidence/bundle formats must preserve strict schema,
+size/path limits, metadata-only packaging and offline tamper detection.
