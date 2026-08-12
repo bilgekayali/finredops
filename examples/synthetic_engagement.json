@@ -33,7 +33,8 @@
   ],
   "allowed_actions": [
     "http.response_headers.inspect",
-    "tls.certificate_metadata.inspect"
+    "tls.certificate_metadata.inspect",
+    "http.security_posture.validate"
   ],
   "window_start": "2026-08-12T09:00:00Z",
   "window_end": "2026-08-12T11:00:00Z",

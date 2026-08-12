@@ -74,6 +74,8 @@ class SubjectKind(StringEnum):
 
 class ExecutionStatus(StringEnum):
     SIMULATED = "simulated"
+    VALIDATED = "validated"
+    FAILED = "failed"
     DENIED = "denied"
     CANCELLED = "cancelled"
 

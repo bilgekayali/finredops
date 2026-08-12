@@ -21,6 +21,7 @@
               "http.response_headers.inspect", "tls.certificate_metadata.inspect",
               "dns.metadata.inspect", "identity.configuration.review",
               "cloud.configuration.review", "transaction.workflow.review",
+              "http.security_posture.validate",
               "vulnerability.validation.controlled"
             ]
           },

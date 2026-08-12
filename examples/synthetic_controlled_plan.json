@@ -1,0 +1,17 @@
+{
+  "objective": "Validate the bounded active-action contract without contacting the reserved test target.",
+  "proposals": [
+    {
+      "action_id": "http.security_posture.validate",
+      "target": "payments-lab.example.test",
+      "rationale": "Record a single approved HTTP security-posture validation proposal for human review.",
+      "parameters": {
+        "port": 443,
+        "path": "/",
+        "timeout_seconds": 3,
+        "change_reference": "CHG-SYNTHETIC-ONLY",
+        "methodology_profile": "tse-nist-owasp-v1"
+      }
+    }
+  ]
+}

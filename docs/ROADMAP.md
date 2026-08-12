@@ -23,7 +23,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] mandatory coverage, finding ownership and retest-evidence validation;
 - [x] JSON schemas and synthetic audit-support report package;
 
-## v0.3 — audit dossier (current branch)
+## v0.3 — audit dossier
 
 - [x] human-confirmed BDDK, SPK, KVKK, TSE and ISO applicability matrix;
 - [x] TSE TS 13638/T2 public prerequisites and licensed-clause evidence model;
@@ -31,6 +31,25 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] finding, severity, retest and control-conclusion report delta;
 - [x] deterministic audit dossier and safe offline verifier;
 - [x] CLI, read-only API, dashboard, JSON schemas and integrity tests;
+
+## v0.4 — bounded active validation (current branch)
+
+- [x] simulation remains the default execution mode;
+- [x] explicit controlled-runner injection and read-only capability visibility;
+- [x] one TLS `HEAD` request to one approved non-production target;
+- [x] no redirects, response body, discovery, crawling, port scanning or payloads;
+- [x] three-person controlled-action approval and request-rate enforcement;
+- [x] pre/post-request kill-switch checks and safe failure receipts;
+- [x] HSTS, CSP, MIME, cookie and certificate-expiry draft findings;
+- [x] deterministic conversion from validated receipts to report findings;
+- [ ] isolated signed worker and institution-owned workload identity;
+- [ ] authenticated test-account and authorization-boundary modules;
+- [ ] approved source-package SAST/dependency/secret-analysis adapters;
+- [ ] independently reviewed production-validation policy overlay;
+- [ ] qualified tester UX for false-positive disposition and severity override;
+
+## Platform hardening
+
 - [ ] signed identities using an external identity provider;
 - [ ] tenant isolation and institution-owned encryption keys;
 - [ ] key-backed approval and receipt signatures;
@@ -39,11 +58,10 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [ ] policy bundle signatures and independent change approval;
 - [ ] independent legal, accessibility and security review.
 
-## Later — separately reviewed passive runner
+## Later — separately reviewed advanced modules
 
-A live adapter is not promised. Before any implementation, it would need a
-separate threat model, legal and control review, signed workloads, strict
-egress allowlisting, one-time credentials, isolated workers, bounded rate,
-tested emergency stop, and a catalog limited to non-impacting collection.
-Exploit delivery, credential attacks, arbitrary commands, and autonomous target
-discovery remain out of scope.
+Any additional active module needs a separate threat model, legal and control
+review, signed workloads, strict egress allowlisting, one-time test identities,
+isolated workers, bounded rate and tested emergency stop. Exploit payload
+generation, arbitrary commands and autonomous target discovery remain out of
+scope for built-in runners.

@@ -1,4 +1,4 @@
-"""Closed action catalog for the simulation-only FinRedOps runner."""
+"""Closed action catalog for simulation and bounded active validation."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ class ActionDefinition:
     description: str
     risk_level: RiskLevel
     allowed_parameter_keys: frozenset[str]
+    required_parameter_keys: frozenset[str] = frozenset()
     supported_in_mvp: bool = True
 
 
@@ -23,6 +24,7 @@ def _action(
     description: str,
     risk_level: RiskLevel,
     *parameter_keys: str,
+    required: tuple[str, ...] = (),
     supported: bool = True,
 ) -> ActionDefinition:
     return ActionDefinition(
@@ -31,6 +33,7 @@ def _action(
         description=description,
         risk_level=risk_level,
         allowed_parameter_keys=frozenset(parameter_keys),
+        required_parameter_keys=frozenset(required),
         supported_in_mvp=supported,
     )
 
@@ -87,9 +90,21 @@ ACTION_CATALOG: dict[str, ActionDefinition] = {
             "evidence_reference",
         ),
         _action(
+            "http.security_posture.validate",
+            "Bounded HTTP security posture validation",
+            "Make one approved TLS HEAD request without redirects or response-body collection and produce reviewable finding metadata.",
+            RiskLevel.CONTROLLED,
+            "port",
+            "path",
+            "timeout_seconds",
+            "change_reference",
+            "methodology_profile",
+            required=("change_reference",),
+        ),
+        _action(
             "vulnerability.validation.controlled",
             "Controlled vulnerability validation",
-            "Reserved catalog entry for a separately isolated and institution-approved runner.",
+            "Reserved catalog entry for separately reviewed institution-specific validation modules.",
             RiskLevel.CONTROLLED,
             "finding_reference",
             supported=False,

@@ -13,12 +13,14 @@ from .models import (
     ApprovalRecord,
     Engagement,
     EngagementStatus,
+    Environment,
     PolicyDecision,
     RiskLevel,
     Role,
     SubjectKind,
     ensure_aware,
 )
+from .validation import CONTROLLED_HTTP_ACTION, validate_controlled_parameters
 
 
 _FORBIDDEN_PARAMETER_KEYS = frozenset(
@@ -120,6 +122,8 @@ class PolicyEngine:
         *,
         now: datetime,
         emergency_stop: bool = False,
+        controlled_runner_available: bool = False,
+        requests_in_last_minute: int = 0,
     ) -> PolicyDecision:
         now = ensure_aware(now)
         reasons: list[str] = []
@@ -138,10 +142,14 @@ class PolicyEngine:
 
         try:
             excluded = any(asset.contains(proposal.target) for asset in engagement.excluded_assets)
-            included = any(asset.contains(proposal.target) for asset in engagement.assets)
+            matching_assets = tuple(
+                asset for asset in engagement.assets if asset.contains(proposal.target)
+            )
+            included = bool(matching_assets)
         except ValueError:
             excluded = False
             included = False
+            matching_assets = ()
         if excluded:
             reasons.append("Target is explicitly excluded from the engagement.")
         elif not included:
@@ -154,14 +162,38 @@ class PolicyEngine:
             if proposal.action_id not in engagement.allowed_actions:
                 reasons.append("Action is not allowed by the engagement.")
             if not action.supported_in_mvp:
-                reasons.append("Action has no approved v0.1 runner implementation.")
-            if action.risk_level in {RiskLevel.CONTROLLED, RiskLevel.IMPACTING}:
-                reasons.append("The simulation runner rejects controlled or impacting actions.")
+                reasons.append("Action has no approved v0.4 runner implementation.")
+            if action.risk_level == RiskLevel.IMPACTING:
+                reasons.append("Impacting actions remain prohibited by the built-in runners.")
+            elif action.risk_level == RiskLevel.CONTROLLED:
+                if not controlled_runner_available:
+                    reasons.append("The controlled-validation runner is not explicitly enabled.")
+                if any(
+                    asset.environment == Environment.PRODUCTION
+                    for asset in matching_assets
+                ):
+                    reasons.append(
+                        "The built-in v0.4 controlled runner refuses production targets."
+                    )
+                if requests_in_last_minute >= engagement.max_requests_per_minute:
+                    reasons.append("The engagement request-rate ceiling has been reached.")
             unexpected = set(proposal.parameters) - action.allowed_parameter_keys
             if unexpected:
                 reasons.append(
                     "Unexpected action parameters: " + ", ".join(sorted(unexpected)) + "."
                 )
+            missing_parameters = action.required_parameter_keys - set(proposal.parameters)
+            if missing_parameters:
+                reasons.append(
+                    "Missing required action parameters: "
+                    + ", ".join(sorted(missing_parameters))
+                    + "."
+                )
+            if proposal.action_id == CONTROLLED_HTTP_ACTION and not missing_parameters:
+                try:
+                    validate_controlled_parameters(proposal.parameters)
+                except ValueError as exc:
+                    reasons.append(f"Invalid controlled-validation parameters: {exc}")
 
         forbidden = _parameter_keys(proposal.parameters) & _FORBIDDEN_PARAMETER_KEYS
         if forbidden:
@@ -187,16 +219,19 @@ class PolicyEngine:
         if any(item.decision == ApprovalDecision.DENIED for item in current):
             reasons.append("A current proposal denial exists.")
         approved = [item for item in current if item.decision == ApprovalDecision.APPROVED]
+        required_roles = set(self.proposal_roles)
+        if action is not None and action.risk_level == RiskLevel.CONTROLLED:
+            required_roles.add(Role.BUSINESS_OWNER)
         roles = {item.role for item in approved}
-        missing = self.proposal_roles - roles
+        missing = required_roles - roles
         if missing:
             reasons.append(
                 "Missing proposal approval roles: "
                 + ", ".join(sorted(role.value for role in missing))
                 + "."
             )
-        actors = {item.actor_id for item in approved if item.role in self.proposal_roles}
-        if len(actors) < len(self.proposal_roles):
+        actors = {item.actor_id for item in approved if item.role in required_roles}
+        if len(actors) < len(required_roles):
             reasons.append("Proposal approvals must come from distinct actors.")
         if proposal.proposed_by in actors:
             reasons.append("The proposer cannot approve their own proposal.")

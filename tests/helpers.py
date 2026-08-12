@@ -48,6 +48,7 @@ def make_engagement(*, status: EngagementStatus = EngagementStatus.APPROVED) -> 
         ),
         allowed_actions=(
             "http.response_headers.inspect",
+            "http.security_posture.validate",
             "vulnerability.validation.controlled",
         ),
         window_start=NOW - timedelta(hours=1),
@@ -104,6 +105,16 @@ def make_approval(
 
 def proposal_approvals(proposal: ActionProposal) -> tuple[ApprovalRecord, ApprovalRecord]:
     return (
+        make_approval(proposal, actor_id="control", role=Role.CONTROL_TEAM),
+        make_approval(proposal, actor_id="executor", role=Role.EXECUTION_APPROVER),
+    )
+
+
+def controlled_proposal_approvals(
+    proposal: ActionProposal,
+) -> tuple[ApprovalRecord, ApprovalRecord, ApprovalRecord]:
+    return (
+        make_approval(proposal, actor_id="owner", role=Role.BUSINESS_OWNER),
         make_approval(proposal, actor_id="control", role=Role.CONTROL_TEAM),
         make_approval(proposal, actor_id="executor", role=Role.EXECUTION_APPROVER),
     )

@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Mapping
 
 from .audit import AuditChain
+from .catalog import get_action
 from .models import (
     ActionProposal,
     ApprovalRecord,
     Engagement,
     EngagementStatus,
     ExecutionReceipt,
+    ExecutionStatus,
     PolicyDecision,
+    RiskLevel,
     Role,
     SubjectKind,
     ensure_aware,
@@ -23,6 +26,7 @@ from .policy import PolicyEngine
 from .profiles import PolicyProfile, PreflightReport, regulated_financial_profile
 from .regulations import RegulatoryProfile, turkey_financial_regulatory_profile
 from .runner import SimulationRunner
+from .validation import ControlledValidationRunner, receipt_to_security_findings
 
 
 class FinRedOpsService:
@@ -32,22 +36,26 @@ class FinRedOpsService:
         self,
         profile: PolicyProfile | None = None,
         regulatory_profile: RegulatoryProfile | None = None,
+        controlled_runner: ControlledValidationRunner | None = None,
     ) -> None:
         self.engagements: dict[str, Engagement] = {}
         self.proposals: dict[str, ActionProposal] = {}
         self.approvals: list[ApprovalRecord] = []
         self.decisions: dict[str, PolicyDecision] = {}
         self.receipts: dict[str, ExecutionReceipt] = {}
+        self.generated_findings: dict[str, tuple[Any, ...]] = {}
         self.preflight_reports: dict[str, PreflightReport] = {}
         self.audit = AuditChain()
         self.policy = PolicyEngine()
         self.planner = GuardedPlanningGateway()
         self.runner = SimulationRunner()
+        self.controlled_runner = controlled_runner
         self.profile = profile or regulated_financial_profile()
         self.regulatory_profile = (
             regulatory_profile or turkey_financial_regulatory_profile()
         )
         self._emergency_stops: set[str] = set()
+        self._controlled_request_times: dict[str, list[datetime]] = {}
 
     def register_engagement(
         self, engagement: Engagement, *, actor_id: str, now: datetime
@@ -215,12 +223,23 @@ class FinRedOpsService:
             raise PermissionError("Only an operator can request proposal execution.")
         proposal = self.proposals[proposal_id]
         engagement = self.engagements[proposal.engagement_id]
+        action = get_action(proposal.action_id)
+        controlled = action is not None and action.risk_level == RiskLevel.CONTROLLED
+        cutoff = now - timedelta(minutes=1)
+        recent = [
+            item
+            for item in self._controlled_request_times.get(engagement.engagement_id, [])
+            if item > cutoff
+        ]
+        self._controlled_request_times[engagement.engagement_id] = recent
         decision = self.policy.evaluate(
             engagement,
             proposal,
             self.approvals,
             now=now,
             emergency_stop=engagement.engagement_id in self._emergency_stops,
+            controlled_runner_available=self.controlled_runner is not None,
+            requests_in_last_minute=len(recent),
         )
         self.decisions[proposal_id] = decision
         self.audit.append(
@@ -237,12 +256,34 @@ class FinRedOpsService:
         )
         if not decision.allowed:
             return decision, None
-        receipt = self.runner.execute(proposal, now=now)
+        if controlled:
+            if self.controlled_runner is None:  # pragma: no cover - policy invariant
+                raise RuntimeError("Controlled validation was allowed without a runner.")
+            recent.append(now)
+            receipt = self.controlled_runner.execute(
+                proposal,
+                engagement,
+                now=now,
+                is_cancelled=lambda: (
+                    engagement.engagement_id in self._emergency_stops
+                    or self.engagements[engagement.engagement_id].status
+                    == EngagementStatus.PAUSED
+                ),
+            )
+            self.generated_findings[proposal_id] = receipt_to_security_findings(receipt)
+            event_type = {
+                ExecutionStatus.VALIDATED: "validation.completed",
+                ExecutionStatus.FAILED: "validation.failed",
+                ExecutionStatus.CANCELLED: "validation.cancelled",
+            }.get(receipt.status, "validation.completed")
+        else:
+            receipt = self.runner.execute(proposal, now=now)
+            event_type = "simulation.completed"
         self.receipts[proposal_id] = receipt
         self.audit.append(
             timestamp=now,
             actor_id=actor_id,
-            event_type="simulation.completed",
+            event_type=event_type,
             engagement_id=engagement.engagement_id,
             payload={
                 "proposal_id": proposal_id,
@@ -283,7 +324,14 @@ class FinRedOpsService:
         subject_ids = {engagement_id, *proposal_ids}
         return {
             "schema_version": "finredops.snapshot.v2",
-            "simulation_only": True,
+            "simulation_only": self.controlled_runner is None,
+            "execution_capabilities": {
+                "simulation": True,
+                "controlled_validation": self.controlled_runner is not None,
+                "arbitrary_commands": False,
+                "exploit_payloads": False,
+                "production_active_validation": False,
+            },
             "policy_profile": self.profile.as_dict(),
             "regulatory_profile": self.regulatory_profile.as_dict(),
             "preflight": self.preflight_reports[engagement_id].as_dict(),
@@ -304,6 +352,11 @@ class FinRedOpsService:
                 item: to_primitive(self.receipts[item])
                 for item in proposal_ids
                 if item in self.receipts
+            },
+            "generated_findings": {
+                item: to_primitive(self.generated_findings[item])
+                for item in proposal_ids
+                if item in self.generated_findings
             },
             "audit": self.audit.as_list(),
         }

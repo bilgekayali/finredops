@@ -268,7 +268,7 @@ def build_demo_assurance_snapshot(
     ApplicabilityAssessment,
     EvidenceManifest,
 ]:
-    """Enrich a service snapshot with safe v0.3 assurance metadata."""
+    """Enrich a service snapshot with safe assurance metadata."""
 
     effective_now = ensure_aware(now)
     report = demo_regulatory_report(issued_at=effective_now)
