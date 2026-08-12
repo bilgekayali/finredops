@@ -27,6 +27,13 @@ jobs:
       - name: Install package
         run: python -m pip install -e .
 
+      - name: Compile and validate structured inputs
+        run: |
+          python -m compileall -q src tests
+          python -m finredops validate-engagement examples/synthetic_engagement.json
+          python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
+          python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
+
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
@@ -34,4 +41,27 @@ jobs:
         run: |
           python -m finredops demo --output demo-output
           python -m finredops verify-audit demo-output/audit.jsonl
+          python -m finredops verify-store demo-output/finredops.db FRX-DEMO-2026-001
+          python -m finredops validate-report demo-output/regulatory-report.json
+          python -m finredops render-report demo-output/regulatory-report.json --output demo-output/verified-report.md
+          python -m finredops report-template --type vendor_source_code_review --output demo-output/vendor-source-template.json
+          python -m finredops report-template --type vendor_application_penetration --output demo-output/vendor-app-template.json
 
+      - name: Enforce simulation-runner import boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          tree = ast.parse(Path("src/finredops/runner.py").read_text(encoding="utf-8"))
+          forbidden = {"asyncio", "http", "requests", "socket", "subprocess", "urllib"}
+          imports = {
+              alias.name.split(".")[0]
+              for node in ast.walk(tree)
+              if isinstance(node, (ast.Import, ast.ImportFrom))
+              for alias in (node.names if isinstance(node, ast.Import) else [ast.alias(node.module or "")])
+          }
+          unexpected = imports & forbidden
+          if unexpected:
+              raise SystemExit(f"simulation runner imports forbidden capability: {sorted(unexpected)}")
+          PY

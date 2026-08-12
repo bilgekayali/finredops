@@ -1,6 +1,6 @@
 # Architecture
 
-FinRedOps v0.1 is a small reference control plane, not a scanner. Its central
+FinRedOps v0.2 is a small reference control plane, not a scanner. Its central
 design choice is to separate probabilistic planning from deterministic
 authorization and execution.
 
@@ -22,6 +22,16 @@ authorization and execution.
 6. **Audit chain** links canonicalized events with SHA-256 so offline
    verification can identify alteration or removal inside the chain.
 7. **Dashboard** renders a snapshot locally and labels all evidence synthetic.
+8. **Institution profile** blocks unsafe scope, risk, contact, rate, and approval
+   settings before an engagement can be activated.
+9. **Evidence guard** minimizes likely secrets, e-mail addresses, valid IBANs,
+   and payment-card identifiers before receipts become immutable.
+10. **SQLite store** persists append-only snapshot revisions and refuses audit
+    histories that diverge from the exact stored prefix.
+11. **Regulatory/report engine** records source-linked control conclusions,
+    mandatory test coverage, finding ownership, remediation, and human sign-off.
+12. **Read-only API** exposes synthetic state over GET/HEAD only on loopback by
+    default; no state-changing endpoint exists.
 
 ## Trust boundaries
 
@@ -46,11 +56,25 @@ The v0.1 execution zone contains no live adapter.
 
 ## State and persistence
 
-The service stores state in memory for clarity and testability. Generated JSON
-and JSONL are export artifacts, not a transactional database. A production
-design would require authenticated identities, durable append-only storage,
-key-backed signatures, tenant isolation, encrypted evidence, retention policy,
-and recovery procedures.
+The service state machine remains process-local, while v0.2 adds a transactional
+SQLite export store. Snapshots are immutable revisions; audit events must extend
+the stored chain exactly. This is durable demonstration storage, not a complete
+multi-tenant system of record. Production still requires authenticated identities,
+tenant isolation, institution-owned encryption keys, key-backed signatures,
+retention/legal-hold policy, backups, recovery and external audit anchoring.
+
+## Assurance data flow
+
+```mermaid
+flowchart TD
+    E["Approved engagement"] --> P["Institution preflight"]
+    P --> A["Synthetic evidence receipt"]
+    A --> G["Evidence guard"]
+    G --> S["SQLite + hash audit"]
+    S --> R["Audit-support report"]
+    C["Versioned TR control profile"] --> R
+    R --> H["Two-person human review"]
+```
 
 ## Proposed future live boundary
 

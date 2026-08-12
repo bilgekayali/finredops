@@ -3,7 +3,7 @@
 ## Project boundary
 
 FinRedOps is an authorization and evidence control plane for security testing.
-The v0.1 runner is simulation-only. The project does not contain exploit
+The built-in v0.2 runner is simulation-only. The project does not contain exploit
 payloads, credential attacks, persistence mechanisms, arbitrary shell
 execution, port scanning, or autonomous target discovery.
 
@@ -28,4 +28,3 @@ exploit payloads in a report.
 ## Supported versions
 
 Until the first stable release, only the latest commit on `main` is supported.
-

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/engagement.schema.json",
+  "title": "FinRedOps engagement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "engagement_id", "name", "requester_id", "critical_functions", "assets",
+    "excluded_assets", "allowed_actions", "window_start", "window_end",
+    "emergency_contacts", "max_requests_per_minute", "approval_ttl_minutes", "status"
+  ],
+  "properties": {
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 100},
+    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "requester_id": {"type": "string", "minLength": 1, "maxLength": 100},
+    "critical_functions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "assets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/asset"}},
+    "excluded_assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}},
+    "allowed_actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "window_start": {"type": "string", "format": "date-time"},
+    "window_end": {"type": "string", "format": "date-time"},
+    "emergency_contacts": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "format": "email"}},
+    "max_requests_per_minute": {"type": "integer", "minimum": 1, "maximum": 60},
+    "approval_ttl_minutes": {"type": "integer", "minimum": 5, "maximum": 1440},
+    "status": {"enum": ["draft", "pending_approval", "approved", "paused", "completed", "revoked"]}
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "kind", "value", "environment", "data_classification", "critical_function"],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["hostname", "ip_address", "cidr"]},
+        "value": {"type": "string", "minLength": 1},
+        "environment": {"enum": ["lab", "development", "test", "production"]},
+        "data_classification": {"enum": ["public", "internal", "confidential", "restricted"]},
+        "critical_function": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

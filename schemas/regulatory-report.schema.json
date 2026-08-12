@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/regulatory-report.schema.json",
+  "title": "FinRedOps regulatory audit-support report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "report_id", "title", "assessment_type", "organization",
+    "period_start", "period_end", "issued_at", "classification",
+    "rules_of_engagement_ref", "in_scope_assets", "excluded_assets",
+    "tester_organization", "lead_tester", "independence_declaration",
+    "tester_qualifications", "methodology", "coverage_areas", "executive_summary",
+    "limitations", "findings", "control_assessments", "regulatory_profile_id",
+    "regulatory_profile_digest", "status", "human_approvals", "audit_support_only"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.regulatory-report.v1"},
+    "report_id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "assessment_type": {"enum": ["annual_bank_penetration", "vendor_source_code_review", "vendor_application_penetration", "remediation_verification"]},
+    "organization": {"type": "string", "minLength": 1},
+    "period_start": {"type": "string", "format": "date"},
+    "period_end": {"type": "string", "format": "date"},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "classification": {"type": "string", "minLength": 1},
+    "rules_of_engagement_ref": {"$ref": "#/$defs/evidenceRef"},
+    "in_scope_assets": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "excluded_assets": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "tester_organization": {"type": "string", "minLength": 1},
+    "lead_tester": {"type": "string", "minLength": 1},
+    "independence_declaration": {"type": "string"},
+    "tester_qualifications": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "methodology": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "coverage_areas": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "executive_summary": {"type": "string", "minLength": 1},
+    "limitations": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+    "control_assessments": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/controlAssessment"}},
+    "regulatory_profile_id": {"type": "string", "minLength": 1},
+    "regulatory_profile_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "status": {"enum": ["draft", "human_review", "approved", "issued"]},
+    "human_approvals": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "audit_support_only": {"const": true},
+    "report_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "$defs": {
+    "evidenceRef": {"type": "string", "pattern": "^(evidence|attachment|qualification-evidence)://"},
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_id", "title", "severity", "affected_assets", "summary", "business_impact", "recommendation", "evidence_refs", "control_refs", "owner", "due_date", "status", "retest_status", "retest_date", "retest_evidence_refs"],
+      "properties": {
+        "finding_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["informational", "low", "medium", "high", "critical"]},
+        "affected_assets": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "summary": {"type": "string", "minLength": 1},
+        "business_impact": {"type": "string", "minLength": 1},
+        "recommendation": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidenceRef"}},
+        "control_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "owner": {"type": "string"},
+        "due_date": {"type": "string"},
+        "status": {"enum": ["open", "risk_accepted", "remediated", "closed"]},
+        "retest_status": {"enum": ["not_tested", "planned", "failed", "passed", "not_applicable"]},
+        "retest_date": {"type": "string"},
+        "retest_evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}}
+      }
+    },
+    "controlAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["control_id", "conclusion", "evidence_refs", "finding_ids", "notes"],
+      "properties": {
+        "control_id": {"type": "string", "minLength": 1},
+        "conclusion": {"enum": ["conforms", "partial", "gap", "not_applicable", "not_tested"]},
+        "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/evidenceRef"}},
+        "finding_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "notes": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

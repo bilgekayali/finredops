@@ -103,9 +103,9 @@ class AuditChain:
         path.write_text(self.to_jsonl(), encoding="utf-8")
 
     @classmethod
-    def read(cls, path: Path) -> "AuditChain":
+    def from_jsonl(cls, document: str) -> "AuditChain":
         events: list[AuditEvent] = []
-        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        for line_number, line in enumerate(document.splitlines(), start=1):
             if not line.strip():
                 continue
             try:
@@ -124,6 +124,10 @@ class AuditChain:
                 raise ValueError(f"Invalid audit event on line {line_number}: {exc}") from exc
             events.append(event)
         return cls(events)
+
+    @classmethod
+    def read(cls, path: Path) -> "AuditChain":
+        return cls.from_jsonl(path.read_text(encoding="utf-8"))
 
     def as_list(self) -> list[dict[str, Any]]:
         return [to_primitive(event) for event in self._events]
