@@ -1,0 +1,23 @@
+{
+  "objective": "Demonstrate governed evidence review in a reserved test namespace.",
+  "proposals": [
+    {
+      "action_id": "http.response_headers.inspect",
+      "target": "payments-lab.example.test",
+      "rationale": "Review supplied synthetic header evidence for a declared baseline.",
+      "parameters": {
+        "expected_control": "FR-HTTP-01",
+        "evidence_reference": "SYNTH-HTTP-001"
+      }
+    },
+    {
+      "action_id": "tls.certificate_metadata.inspect",
+      "target": "payments-lab.example.test",
+      "rationale": "Review supplied synthetic certificate metadata and expiry posture.",
+      "parameters": {
+        "expected_control": "FR-TLS-02",
+        "evidence_reference": "SYNTH-TLS-001"
+      }
+    }
+  ]
+}
