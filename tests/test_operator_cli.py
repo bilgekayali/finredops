@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import tempfile
@@ -18,7 +19,7 @@ SYNTHETIC_SARIF = ROOT / "examples" / "synthetic_sast.sarif.json"
 
 
 class OperatorCliTests(unittest.TestCase):
-    def test_augmented_help_surfaces_v06_commands(self) -> None:
+    def test_augmented_help_surfaces_operator_and_release_commands(self) -> None:
         output = io.StringIO()
         with redirect_stdout(output):
             result = entrypoint(["--help"])
@@ -27,8 +28,10 @@ class OperatorCliTests(unittest.TestCase):
         self.assertIn("reviewed-report-spec-template", text)
         self.assertIn("promote-reviewed-report", text)
         self.assertIn("demo-reviewed-report", text)
+        self.assertIn("export-examples", text)
+        self.assertIn("verify-release-checksums", text)
 
-    def test_demo_reviewed_report_is_reproducible_and_draft_only(self) -> None:
+    def test_demo_reviewed_report_uses_packaged_sarif_and_remains_draft_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output_dir = Path(directory) / "reviewed"
             captured = io.StringIO()
@@ -36,8 +39,6 @@ class OperatorCliTests(unittest.TestCase):
                 result = entrypoint(
                     [
                         "demo-reviewed-report",
-                        "--sarif",
-                        str(SYNTHETIC_SARIF),
                         "--output-dir",
                         str(output_dir),
                     ]
@@ -61,13 +62,76 @@ class OperatorCliTests(unittest.TestCase):
                 repeated = entrypoint(
                     [
                         "demo-reviewed-report",
-                        "--sarif",
-                        str(SYNTHETIC_SARIF),
                         "--output-dir",
                         str(output_dir),
                     ]
                 )
             self.assertEqual(repeated, 1)
+
+    def test_explicit_sarif_override_is_still_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with redirect_stdout(io.StringIO()):
+                result = entrypoint(
+                    [
+                        "demo-reviewed-report",
+                        "--sarif",
+                        str(SYNTHETIC_SARIF),
+                        "--output-dir",
+                        str(Path(directory) / "explicit"),
+                    ]
+                )
+            self.assertEqual(result, 0)
+
+    def test_export_examples_and_verify_release_checksums(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            examples = root / "examples"
+            captured = io.StringIO()
+            with redirect_stdout(captured):
+                result = entrypoint(
+                    ["export-examples", "--output-dir", str(examples)]
+                )
+            self.assertEqual(result, 0)
+            export_result = json.loads(captured.getvalue())
+            self.assertTrue(export_result["synthetic_only"])
+            self.assertEqual(len(export_result["files"]), 3)
+
+            release_dir = root / "release"
+            release_dir.mkdir()
+            artifact = release_dir / "finredops-0.6.1-py3-none-any.whl"
+            artifact.write_bytes(b"synthetic release bytes")
+            digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            manifest = release_dir / "CHECKSUMS.sha256"
+            manifest.write_text(f"{digest}  {artifact.name}\n", encoding="utf-8")
+
+            verification = io.StringIO()
+            with redirect_stdout(verification):
+                verified = entrypoint(
+                    [
+                        "verify-release-checksums",
+                        "--manifest",
+                        str(manifest),
+                        "--directory",
+                        str(release_dir),
+                    ]
+                )
+            self.assertEqual(verified, 0)
+            self.assertTrue(json.loads(verification.getvalue())["valid"])
+
+            artifact.write_bytes(b"tampered")
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    entrypoint(
+                        [
+                            "verify-release-checksums",
+                            "--manifest",
+                            str(manifest),
+                            "--directory",
+                            str(release_dir),
+                        ]
+                    ),
+                    1,
+                )
 
     def test_spec_template_and_promote_command_form_end_to_end_workflow(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
