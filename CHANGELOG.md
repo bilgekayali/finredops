@@ -4,6 +4,26 @@ All notable changes to FinRedOps are documented here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-12
+
+### Added
+
+- Bounded SARIF 2.1.0 importer with deterministic canonical finding records.
+- Stable source-tool/rule fingerprinting, duplicate correlation, non-final
+  machine severity/confidence and mandatory qualified-human review state.
+- Strict finding-intake JSON contract, source/batch digests, CLI import and
+  validation commands, synthetic SARIF example and focused tests.
+
+### Security
+
+- Import accepts uncompressed UTF-8 JSON only and enforces file, run, result,
+  rule, tag, position and stored-text limits.
+- Artifact URIs are never dereferenced; absolute, external and traversal paths
+  become opaque digests, embedded source snippets are ignored and likely secrets
+  or regulated identifiers are minimized.
+- Raw SARIF is not embedded and imported results cannot become final report
+  findings or regulatory conclusions without a separate human workflow.
+
 ## [0.4.0] - 2026-08-12
 
 ### Added

@@ -14,6 +14,7 @@ from .bundle import BundlePurpose, build_audit_bundle, verify_audit_bundle
 from .custody import EvidenceManifest
 from .demo import build_demo_assurance_snapshot, build_demo_service, write_demo
 from .diffing import compare_reports
+from .intake import SarifIntakeError, import_sarif_file, read_intake_file
 from .planner import GuardedPlanningGateway, PlanValidationError
 from .profiles import regulated_financial_profile
 from .regulations import AssessmentType
@@ -111,6 +112,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     verify_store.add_argument("database", type=Path)
     verify_store.add_argument("engagement_id")
+    import_sarif = subparsers.add_parser(
+        "import-sarif",
+        help="Normalize bounded SARIF 2.1.0 into human-review finding candidates.",
+    )
+    import_sarif.add_argument("path", type=Path)
+    import_sarif.add_argument("--output", type=Path, required=True)
+    validate_intake = subparsers.add_parser(
+        "validate-intake",
+        help="Verify a canonical finding-intake document and its digest.",
+    )
+    validate_intake.add_argument("path", type=Path)
     return parser
 
 
@@ -306,4 +318,34 @@ def entrypoint(argv: list[str] | None = None) -> int:
         for error in errors:
             print(f"INVALID: {error}")
         return 1
+    if args.command == "import-sarif":
+        try:
+            if args.path.resolve() == args.output.resolve():
+                raise SarifIntakeError("SARIF source and canonical output must be different files.")
+            batch = import_sarif_file(args.path)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(
+                json.dumps(batch.as_dict(), ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        except (OSError, SarifIntakeError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(
+            f"Intake: {args.output} "
+            f"({len(batch.findings)} review candidates, "
+            f"{batch.duplicate_result_count} duplicates)"
+        )
+        return 0
+    if args.command == "validate-intake":
+        try:
+            batch = read_intake_file(args.path)
+        except (SarifIntakeError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(
+            f"VALID: {batch.batch_id} contains {len(batch.findings)} "
+            "human-review candidates and no embedded raw source."
+        )
+        return 0
     return 2

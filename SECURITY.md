@@ -3,9 +3,10 @@
 ## Project boundary
 
 FinRedOps is an authorization and evidence control plane for security testing.
-The default v0.4 runner is simulation-only. An optional, explicitly injected
+The default v0.5 runner is simulation-only. An optional, explicitly injected
 runner can make one bounded TLS `HEAD` request to an approved non-production
-target. The project does not contain exploit payloads, credential attacks,
+target. A defensive SARIF importer creates pending-review candidates without
+executing scanner content or dereferencing artifact URIs. The project does not contain exploit payloads, credential attacks,
 persistence mechanisms, arbitrary shell execution, port scanning, crawling or
 autonomous target discovery.
 
