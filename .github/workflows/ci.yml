@@ -30,6 +30,7 @@ jobs:
       - name: Compile and validate structured inputs
         run: |
           python -m compileall -q src tests
+          python -m finredops --help | grep -q "promote-reviewed-report"
           python -m finredops validate-engagement examples/synthetic_engagement.json
           python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
           python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
@@ -51,7 +52,7 @@ jobs:
           python -m finredops render-report demo-output/regulatory-report.json --output demo-output/verified-report.md
           python -m finredops report-template --type vendor_source_code_review --output demo-output/vendor-source-template.json
           python -m finredops report-template --type vendor_application_penetration --output demo-output/vendor-app-template.json
-          python -m finredops.promotion demo --sarif examples/synthetic_sast.sarif.json --output-dir demo-output/reviewed
+          python -m finredops demo-reviewed-report --sarif examples/synthetic_sast.sarif.json --output-dir demo-output/reviewed
           python -m finredops validate-report demo-output/reviewed/regulatory-report.json
 
       - name: Enforce simulation-runner import boundary
