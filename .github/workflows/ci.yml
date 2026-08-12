@@ -51,6 +51,8 @@ jobs:
           python -m finredops render-report demo-output/regulatory-report.json --output demo-output/verified-report.md
           python -m finredops report-template --type vendor_source_code_review --output demo-output/vendor-source-template.json
           python -m finredops report-template --type vendor_application_penetration --output demo-output/vendor-app-template.json
+          python -m finredops.promotion demo --sarif examples/synthetic_sast.sarif.json --output-dir demo-output/reviewed
+          python -m finredops validate-report demo-output/reviewed/regulatory-report.json
 
       - name: Enforce simulation-runner import boundary
         run: |
@@ -106,3 +108,17 @@ jobs:
                   f"finding review imports forbidden promotion/execution capability: {sorted(unexpected)}"
               )
           PY
+
+      - name: Upload verified demo artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: finredops-verified-demo-py${{ matrix.python-version }}
+          if-no-files-found: error
+          path: |
+            demo-output/verified-report.md
+            demo-output/audit-dossier.zip
+            demo-output/reviewed/finding-intake.json
+            demo-output/reviewed/regulatory-report.json
+            demo-output/reviewed/regulatory-report.md
+            demo-output/reviewed/promotion-manifest.json
+            demo-output/reviewed/reviews/*.json
