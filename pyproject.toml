@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finredops"
+version = "0.1.0"
+description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Bilge Kayalı" },
+]
+license = { file = "LICENSE" }
+keywords = [
+  "ai-security",
+  "dora",
+  "financial-services",
+  "penetration-testing",
+  "red-team",
+  "tiber-eu",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/bilgekayali/finredops"
+Repository = "https://github.com/bilgekayali/finredops"
+Issues = "https://github.com/bilgekayali/finredops/issues"
+
+[project.scripts]
+finredops = "finredops.cli:entrypoint"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
