@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finredops"
-version = "0.1.0"
+version = "0.2.0"
 description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -16,7 +16,9 @@ keywords = [
   "ai-security",
   "dora",
   "financial-services",
+  "iso-27001",
   "penetration-testing",
+  "regtech",
   "red-team",
   "tiber-eu",
 ]
@@ -43,4 +45,3 @@ finredops = "finredops.cli:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

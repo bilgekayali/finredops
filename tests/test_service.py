@@ -48,6 +48,9 @@ class ServiceIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             paths = write_demo(Path(directory), now=NOW)
             self.assertIn("SIMULATION-ONLY RUNNER", paths["dashboard"].read_text())
+            self.assertIn("SPK", paths["report_markdown"].read_text())
+            self.assertTrue(paths["database"].exists())
+            self.assertTrue(paths["crosswalk"].exists())
             valid, errors = AuditChain.read(paths["audit"]).verify()
         self.assertTrue(valid, errors)
 

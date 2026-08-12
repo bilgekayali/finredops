@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/ai-plan.schema.json",
+  "title": "FinRedOps structured AI plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["objective", "proposals"],
+  "properties": {
+    "objective": {"type": "string", "minLength": 1, "maxLength": 600},
+    "proposals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action_id", "target", "rationale", "parameters"],
+        "properties": {
+          "action_id": {
+            "enum": [
+              "http.response_headers.inspect", "tls.certificate_metadata.inspect",
+              "dns.metadata.inspect", "identity.configuration.review",
+              "cloud.configuration.review", "transaction.workflow.review",
+              "vulnerability.validation.controlled"
+            ]
+          },
+          "target": {"type": "string", "minLength": 1, "maxLength": 253},
+          "rationale": {"type": "string", "minLength": 10, "maxLength": 600},
+          "parameters": {
+            "type": "object",
+            "maxProperties": 20,
+            "additionalProperties": {"type": ["string", "number", "integer", "boolean", "null"]}
+          }
+        }
+      }
+    }
+  }
+}

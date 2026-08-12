@@ -133,6 +133,8 @@ def to_primitive(value: Any) -> Any:
         }
     if isinstance(value, (tuple, list)):
         return [to_primitive(item) for item in value]
+    if isinstance(value, (set, frozenset)):
+        return sorted(to_primitive(item) for item in value)
     return value
 
 

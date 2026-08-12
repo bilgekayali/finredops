@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from .catalog import ACTION_CATALOG
+from .evidence import EvidenceGuard, guard_summary
 from .models import (
     ActionProposal,
     ExecutionReceipt,
@@ -60,6 +61,9 @@ _SYNTHETIC_EVIDENCE: dict[str, dict[str, Any]] = {
 class SimulationRunner:
     name = "finredops-simulation:v1"
 
+    def __init__(self, evidence_guard: EvidenceGuard | None = None) -> None:
+        self.evidence_guard = evidence_guard or EvidenceGuard()
+
     def execute(self, proposal: ActionProposal, *, now: datetime) -> ExecutionReceipt:
         """Evaluate a bundled fixture only; never contact the proposal target."""
 
@@ -69,12 +73,17 @@ class SimulationRunner:
             raise ValueError("The action has no simulation runner implementation.")
         if action.risk_level in {RiskLevel.CONTROLLED, RiskLevel.IMPACTING}:
             raise ValueError("The simulation runner refuses controlled or impacting actions.")
-        evidence = {
+        candidate_evidence = {
             **_SYNTHETIC_EVIDENCE[proposal.action_id],
             "target_label": proposal.target,
             "action_id": proposal.action_id,
             "simulation": True,
             "disclaimer": "Synthetic evidence; not a security finding or compliance opinion.",
+        }
+        guard_result = self.evidence_guard.sanitize(candidate_evidence)
+        evidence = {
+            **guard_result.evidence,
+            "data_guard": guard_summary(guard_result),
         }
         evidence_digest = sha256_digest(evidence)
         return ExecutionReceipt(

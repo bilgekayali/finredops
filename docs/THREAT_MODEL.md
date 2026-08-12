@@ -8,7 +8,7 @@
 - evidence integrity and audit continuity;
 - institution and customer data that must never enter this prototype.
 
-## Principal threats and v0.1 mitigations
+## Principal threats and v0.2 mitigations
 
 | Threat | Mitigation | Residual limitation |
 |---|---|---|
@@ -21,6 +21,11 @@
 | Unsupported action runs | Policy denies unsupported or controlled actions | Live adapters are intentionally absent |
 | Activity continues during an incident | Emergency stop plus paused state | Distributed kill-switch propagation is future work |
 | Audit history is edited | Previous-hash chain and verifier | A privileged actor could replace the whole unanchored log |
+| Stored audit history is forked | SQLite accepts only an exact extension of the persisted prefix | External immutable anchoring is not yet implemented |
+| Sensitive data enters evidence | Deterministic secret/identifier redaction before receipt creation | Institution-owned DLP and encrypted evidence vault remain external |
+| Broad or production-unsafe scope is approved | Versioned institution preflight blocks breadth, risk, contact, rate, and TTL violations | Asset ownership and legal authority remain external |
+| A stale regulation is treated as current | Versioned, dated, source-linked control registry and applicability notes | Legal/compliance must revalidate every engagement |
+| Automation declares its own report final | Issued/approved reports require two distinct human approval records | Demo identities are not cryptographically authenticated |
 | Dashboard injects HTML | Contextual HTML escaping and CSP | Production UI security review is still required |
 
 ## Misuse cases
@@ -33,5 +38,6 @@ change violates the project boundary even if guarded by a prompt.
 ## Assumptions
 
 The demo runs locally, contains synthetic data, and is operated by a trusted
-developer. It does not provide authentication, multi-tenancy, high
-availability, or regulatory record retention.
+developer. Its API is read-only but unauthenticated. It does not provide
+authenticated identities, multi-tenancy, high availability, institution-owned
+key management, evidence-vault controls, or regulatory record retention.

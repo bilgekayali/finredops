@@ -21,7 +21,13 @@ from .models import (
     utc_now,
 )
 from .planner import synthetic_plan_document
+from .reporting import (
+    demo_regulatory_report,
+    regulatory_crosswalk,
+    render_report_markdown,
+)
 from .service import FinRedOpsService
+from .store import SQLiteGovernanceStore
 
 
 def _approval(
@@ -166,17 +172,38 @@ def build_demo_service(*, now: datetime | None = None) -> tuple[FinRedOpsService
 
 
 def write_demo(output: Path, *, now: datetime | None = None) -> dict[str, Path]:
-    service, engagement_id = build_demo_service(now=now)
+    effective_now = ensure_aware(now or utc_now())
+    service, engagement_id = build_demo_service(now=effective_now)
     snapshot = service.snapshot(engagement_id)
+    report = demo_regulatory_report(issued_at=effective_now)
+    crosswalk = regulatory_crosswalk(report, service.regulatory_profile)
     output.mkdir(parents=True, exist_ok=True)
     paths = {
         "dashboard": output / "dashboard.html",
         "audit": output / "audit.jsonl",
         "snapshot": output / "snapshot.json",
+        "database": output / "finredops.db",
+        "report_markdown": output / "regulatory-report.md",
+        "report_json": output / "regulatory-report.json",
+        "crosswalk": output / "regulatory-crosswalk.json",
     }
     paths["dashboard"].write_text(render_dashboard(snapshot), encoding="utf-8")
     service.audit.write(paths["audit"])
     paths["snapshot"].write_text(
         json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    with SQLiteGovernanceStore(paths["database"]) as store:
+        store.persist_audit_chain(engagement_id, service.audit)
+        store.save_snapshot(snapshot, now=effective_now)
+    paths["report_markdown"].write_text(
+        render_report_markdown(report, service.regulatory_profile), encoding="utf-8"
+    )
+    paths["report_json"].write_text(
+        json.dumps(report.as_dict(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    paths["crosswalk"].write_text(
+        json.dumps(crosswalk, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )
     return paths

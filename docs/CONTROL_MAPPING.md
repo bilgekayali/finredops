@@ -4,6 +4,10 @@ This is a design cross-reference, not a statement of compliance, audit
 readiness, or legal interpretation. Each institution must establish its own
 applicable requirements and obtain independent review.
 
+Turkish financial-sector clauses are maintained separately as executable,
+source-linked mappings. See [Türkiye financial regulatory profile](TURKEY_REGULATORY_MAPPING.md)
+and [reporting model](REPORTING_MODEL.md).
+
 | FinRedOps design element | Reference concept | Demonstrated artifact |
 |---|---|---|
 | Documented engagement and exact scope | NIST SP 800-115 planning; TIBER-EU scope specification | `Engagement`, scope lock panel |

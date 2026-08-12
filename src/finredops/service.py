@@ -20,22 +20,33 @@ from .models import (
 )
 from .planner import GuardedPlanningGateway
 from .policy import PolicyEngine
+from .profiles import PolicyProfile, PreflightReport, regulated_financial_profile
+from .regulations import RegulatoryProfile, turkey_financial_regulatory_profile
 from .runner import SimulationRunner
 
 
 class FinRedOpsService:
     """Coordinate governance state without hiding authorization decisions."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        profile: PolicyProfile | None = None,
+        regulatory_profile: RegulatoryProfile | None = None,
+    ) -> None:
         self.engagements: dict[str, Engagement] = {}
         self.proposals: dict[str, ActionProposal] = {}
         self.approvals: list[ApprovalRecord] = []
         self.decisions: dict[str, PolicyDecision] = {}
         self.receipts: dict[str, ExecutionReceipt] = {}
+        self.preflight_reports: dict[str, PreflightReport] = {}
         self.audit = AuditChain()
         self.policy = PolicyEngine()
         self.planner = GuardedPlanningGateway()
         self.runner = SimulationRunner()
+        self.profile = profile or regulated_financial_profile()
+        self.regulatory_profile = (
+            regulatory_profile or turkey_financial_regulatory_profile()
+        )
         self._emergency_stops: set[str] = set()
 
     def register_engagement(
@@ -48,13 +59,22 @@ class FinRedOpsService:
             raise ValueError("New engagements must start in draft state.")
         if actor_id != engagement.requester_id:
             raise PermissionError("Only the declared requester can register the engagement.")
+        report = self.profile.lint(engagement)
         self.engagements[engagement.engagement_id] = engagement
+        self.preflight_reports[engagement.engagement_id] = report
         self.audit.append(
             timestamp=now,
             actor_id=actor_id,
             event_type="engagement.registered",
             engagement_id=engagement.engagement_id,
-            payload={"engagement_digest": engagement.digest(), "status": engagement.status},
+            payload={
+                "engagement_digest": engagement.digest(),
+                "status": engagement.status,
+                "profile_id": self.profile.profile_id,
+                "profile_digest": self.profile.digest(),
+                "preflight_allowed": report.allowed,
+                "preflight_blocking_count": report.blocking_count,
+            },
         )
         return engagement
 
@@ -65,6 +85,11 @@ class FinRedOpsService:
             raise PermissionError("Only the requester can submit the engagement.")
         if engagement.status != EngagementStatus.DRAFT:
             raise ValueError("Only a draft engagement can be submitted.")
+        report = self.profile.lint(engagement)
+        self.preflight_reports[engagement_id] = report
+        if not report.allowed:
+            codes = ", ".join(item.code for item in report.findings if item.blocking)
+            raise PermissionError(f"Engagement failed institution preflight: {codes}.")
         engagement = engagement.with_status(EngagementStatus.PENDING_APPROVAL)
         self.engagements[engagement_id] = engagement
         self.audit.append(
@@ -126,6 +151,10 @@ class FinRedOpsService:
             raise PermissionError("Only the control team can activate an engagement.")
         if engagement.status != EngagementStatus.PENDING_APPROVAL:
             raise ValueError("Engagement is not pending approval.")
+        report = self.profile.lint(engagement)
+        self.preflight_reports[engagement_id] = report
+        if not report.allowed:
+            raise PermissionError("Engagement no longer satisfies the institution profile.")
         ready, reasons = self.policy.engagement_approval_ready(
             engagement, self.approvals, now=now
         )
@@ -253,8 +282,11 @@ class FinRedOpsService:
         ]
         subject_ids = {engagement_id, *proposal_ids}
         return {
-            "schema_version": "finredops.snapshot.v1",
+            "schema_version": "finredops.snapshot.v2",
             "simulation_only": True,
+            "policy_profile": self.profile.as_dict(),
+            "regulatory_profile": self.regulatory_profile.as_dict(),
+            "preflight": self.preflight_reports[engagement_id].as_dict(),
             "engagement": to_primitive(engagement),
             "engagement_digest": engagement.digest(),
             "proposals": [to_primitive(self.proposals[item]) for item in proposal_ids],

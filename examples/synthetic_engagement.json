@@ -11,6 +11,14 @@
       "environment": "lab",
       "data_classification": "internal",
       "critical_function": "card authorization"
+    },
+    {
+      "asset_id": "ASSET-IAM-001",
+      "kind": "hostname",
+      "value": "identity-lab.example.test",
+      "environment": "lab",
+      "data_classification": "confidential",
+      "critical_function": "customer identity"
     }
   ],
   "excluded_assets": [
