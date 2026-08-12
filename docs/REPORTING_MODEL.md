@@ -58,8 +58,14 @@ aktarılan her kayıt `pending_review` durumunda, makine tarafından önerilen f
 nihai olmayan önem/güven değerleriyle ayrı bir kanonik adaydır. Rapor bulgusuna
 dönüşüm için yetkin test uzmanının en azından yeniden üretim veya kanıt doğrulama,
 yanlış pozitif/tekrar kararı, iş etkisi, nihai önem, öneri, kanıt ve kontrol
-eşlemesini kaydetmesi gerekir. Bu terfi iş akışı ilk v0.5 diliminde özellikle
-uygulanmamıştır; SARIF alanlarından otomatik düzenleyici sonuç çıkarılamaz.
+eşlemesini kaydetmesi gerekir. v0.5.1 bu uzman kararını aday ve intake digestine
+ve seçilen değerlendirme türüne bağlı ayrı bir kayıt olarak uygular; kontrol
+referansları o değerlendirme türüne uygulanabilir olmalıdır. Risk kabulü yalnız
+doğrulanmış bulgu için,
+test uzmanından farklı bir iş riski sahibi, telafi edici kontroller ve en fazla
+366 günlük süreyle ayrıca kaydedilir. Özet çıktı açıkça
+`report_promotion_performed: false` taşır; kararlar otomatik olarak rapora terfi
+ettirilmez ve SARIF alanlarından düzenleyici sonuç çıkarılamaz.
 
 ## Düzenleyici çapraz kontrol
 

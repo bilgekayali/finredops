@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/risk-acceptance.schema.json",
+  "title": "FinRedOps role-separated risk acceptance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "acceptance_id",
+    "batch_id",
+    "batch_digest",
+    "finding_id",
+    "finding_fingerprint",
+    "review_id",
+    "review_digest",
+    "accepted_by",
+    "acceptance_role",
+    "approved_at",
+    "expires_on",
+    "approval_evidence_ref",
+    "rationale",
+    "compensating_controls",
+    "human_approval_asserted",
+    "acceptance_digest",
+    "cryptographic_signature_present"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "finredops.risk-acceptance.v1"
+    },
+    "acceptance_id": {
+      "type": "string",
+      "pattern": "^FRX-RISK-[A-F0-9]{24}$"
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^FRX-INTAKE-[A-F0-9]{24}$"
+    },
+    "batch_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "finding_id": {
+      "type": "string",
+      "pattern": "^FRX-SARIF-[A-F0-9]{24}$"
+    },
+    "finding_fingerprint": {
+      "$ref": "#/$defs/digest"
+    },
+    "review_id": {
+      "type": "string",
+      "pattern": "^FRX-REV-[A-F0-9]{24}$"
+    },
+    "review_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "accepted_by": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "acceptance_role": {
+      "const": "business_risk_owner"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 50
+    },
+    "expires_on": {
+      "type": "string",
+      "format": "date",
+      "maxLength": 10
+    },
+    "approval_evidence_ref": {
+      "type": "string",
+      "pattern": "^(evidence|attachment)://",
+      "maxLength": 500
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 4000
+    },
+    "compensating_controls": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 5,
+        "maxLength": 500
+      }
+    },
+    "human_approval_asserted": {
+      "const": true
+    },
+    "acceptance_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "cryptographic_signature_present": {
+      "const": false
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

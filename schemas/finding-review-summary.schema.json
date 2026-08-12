@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/finding-review-summary.schema.json",
+  "title": "FinRedOps finding-review queue summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "batch_id",
+    "batch_digest",
+    "assessment_type",
+    "as_of",
+    "candidate_count",
+    "reviewed_count",
+    "pending_count",
+    "confirmed_count",
+    "false_positive_count",
+    "duplicate_count",
+    "not_applicable_count",
+    "accepted_risk_count",
+    "expired_risk_acceptance_count",
+    "complete",
+    "states",
+    "human_review_required",
+    "report_promotion_performed",
+    "summary_digest",
+    "audit_support_only"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "finredops.finding-review-summary.v1"
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^FRX-INTAKE-[A-F0-9]{24}$"
+    },
+    "batch_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "assessment_type": {
+      "enum": [
+        "annual_bank_penetration",
+        "vendor_source_code_review",
+        "vendor_application_penetration",
+        "remediation_verification"
+      ]
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "candidate_count": {
+      "$ref": "#/$defs/count"
+    },
+    "reviewed_count": {
+      "$ref": "#/$defs/count"
+    },
+    "pending_count": {
+      "$ref": "#/$defs/count"
+    },
+    "confirmed_count": {
+      "$ref": "#/$defs/count"
+    },
+    "false_positive_count": {
+      "$ref": "#/$defs/count"
+    },
+    "duplicate_count": {
+      "$ref": "#/$defs/count"
+    },
+    "not_applicable_count": {
+      "$ref": "#/$defs/count"
+    },
+    "accepted_risk_count": {
+      "$ref": "#/$defs/count"
+    },
+    "expired_risk_acceptance_count": {
+      "$ref": "#/$defs/count"
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "states": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "$ref": "#/$defs/state"
+      }
+    },
+    "human_review_required": {
+      "const": true
+    },
+    "report_promotion_performed": {
+      "const": false
+    },
+    "summary_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "audit_support_only": {
+      "const": true
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "optionalDigest": {
+      "type": "string",
+      "pattern": "^$|^[a-f0-9]{64}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20000
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "finding_fingerprint",
+        "source_tool",
+        "rule_id",
+        "review_id",
+        "review_digest",
+        "outcome",
+        "final_severity",
+        "duplicate_of",
+        "risk_acceptance_id",
+        "risk_acceptance_digest",
+        "risk_acceptance_status"
+      ],
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "pattern": "^FRX-SARIF-[A-F0-9]{24}$"
+        },
+        "finding_fingerprint": {
+          "$ref": "#/$defs/digest"
+        },
+        "source_tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "review_id": {
+          "type": "string",
+          "pattern": "^$|^FRX-REV-[A-F0-9]{24}$"
+        },
+        "review_digest": {
+          "$ref": "#/$defs/optionalDigest"
+        },
+        "outcome": {
+          "enum": [
+            "pending_review",
+            "confirmed",
+            "false_positive",
+            "duplicate",
+            "not_applicable",
+            "accepted_risk"
+          ]
+        },
+        "final_severity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "informational",
+            "low",
+            "medium",
+            "high",
+            "critical",
+            null
+          ]
+        },
+        "duplicate_of": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "risk_acceptance_id": {
+          "type": "string",
+          "pattern": "^$|^FRX-RISK-[A-F0-9]{24}$"
+        },
+        "risk_acceptance_digest": {
+          "$ref": "#/$defs/optionalDigest"
+        },
+        "risk_acceptance_status": {
+          "enum": [
+            "none",
+            "active",
+            "expired"
+          ]
+        }
+      }
+    }
+  }
+}

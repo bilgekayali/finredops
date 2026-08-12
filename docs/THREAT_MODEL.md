@@ -28,6 +28,13 @@
 | Scanner result is treated as a confirmed vulnerability | Imported severity is explicitly non-final, capped at high and fixed to pending human review | Qualified testers can still make an incorrect disposition |
 | Duplicate scanner output inflates risk counts | Stable tool/rule fingerprints and deterministic occurrence merging | Poor source fingerprints can still reduce correlation quality |
 | Canonical intake is altered after import | Source and batch SHA-256 digests plus strict round-trip validation | Digests are not external signatures or immutable timestamps |
+| A reviewer decision is copied to a changed finding | Review ID and digest bind the exact batch digest and candidate fingerprint | Reviewer identity and time are asserted strings, not authenticated claims |
+| Machine severity silently becomes final severity | Confirmed reviews require an explicit human severity; every change needs a substantive override rationale | The reviewer can still make an incorrect severity decision |
+| A false positive carries hidden report conclusions | Non-confirmed dispositions reject final severity, impact, recommendation and control conclusions | Free-text rationale still requires human quality review |
+| Duplicate disposition hides an unresolved finding | A duplicate must point directly to a confirmed primary candidate; chains and self-reference fail closed | Cross-batch duplicate correlation remains external |
+| Tester accepts the risk they assessed | Risk acceptance requires a distinct business-risk-owner identity, approval evidence, compensating controls and expiry | String identities are not authenticated and organizational conflicts need external IAM policy |
+| Expired risk acceptance remains reported as active | Summary evaluation returns an expired acceptance to confirmed state | Operational reminders and renewal workflow remain external |
+| A review queue is treated as a final report | Summary records audit-support-only and `report_promotion_performed: false` | A downstream consumer can ignore the stated contract |
 | Operational failure becomes a false finding | Failure receipts carry safe codes and no vulnerability | Human reviewers must still assess incomplete coverage |
 | Activity continues during an incident | Emergency stop plus paused state | Distributed kill-switch propagation is future work |
 | Audit history is edited | Previous-hash chain and verifier | A privileged actor could replace the whole unanchored log |
@@ -55,7 +62,7 @@ change violates the project boundary even if guarded by a prompt.
 The demo runs locally, contains synthetic data, and is operated by a trusted
 developer. The default demo remains simulation-only and its API is read-only but
 unauthenticated. Explicit active validation is limited to approved non-production
-targets. SARIF import reads a local file but performs no scanner execution,
+targets. SARIF import and review read local files but perform no scanner execution,
 artifact retrieval or report promotion. The project does not provide
 authenticated identities, multi-tenancy, high availability, institution-owned
 key management, evidence-vault controls, or regulatory record retention.

@@ -46,9 +46,9 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [ ] authenticated test-account and authorization-boundary modules;
 - [ ] approved source-package SAST/dependency/secret-analysis adapters;
 - [ ] independently reviewed production-validation policy overlay;
-- [ ] qualified tester UX for false-positive disposition and severity override;
+- [x] qualified tester CLI for false-positive disposition and severity override;
 
-## v0.5 — evidence intake and qualified review (current branch)
+## v0.5 — evidence intake and qualified review
 
 - [x] bounded, uncompressed UTF-8 SARIF 2.1.0 intake;
 - [x] deterministic canonical finding fingerprints and duplicate correlation;
@@ -57,7 +57,11 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] non-final machine severity/confidence and mandatory human-review state;
 - [x] strict JSON contract, digest verification, CLI, synthetic example and tests;
 - [ ] CycloneDX 1.7 SBOM and vulnerability intake;
-- [ ] signed qualified-tester disposition and rationale workflow;
+- [x] digest-bound qualified-tester disposition and rationale workflow;
+- [x] role-separated, evidence-linked and time-bounded business risk acceptance;
+- [x] deterministic queue summary with active/expired acceptance state;
+- [ ] authenticated and cryptographically signed reviewer identities;
+- [ ] engagement/authorization binding plus review supersession and revocation;
 - [ ] CVSS 4.0 vector validation with separate financial business impact;
 - [ ] versioned OWASP ASVS 5.0.0 requirement coverage;
 - [ ] controlled promotion from confirmed candidates into draft reports;

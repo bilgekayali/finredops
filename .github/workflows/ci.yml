@@ -70,3 +70,39 @@ jobs:
           if unexpected:
               raise SystemExit(f"simulation runner imports forbidden capability: {sorted(unexpected)}")
           PY
+
+      - name: Enforce finding-review no-promotion boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          tree = ast.parse(Path("src/finredops/review.py").read_text(encoding="utf-8"))
+          forbidden = {
+              "bundle",
+              "http",
+              "reporting",
+              "requests",
+              "runner",
+              "service",
+              "socket",
+              "subprocess",
+              "urllib",
+              "validation",
+          }
+          imports = {
+              (node.module or "").split(".")[0]
+              for node in ast.walk(tree)
+              if isinstance(node, ast.ImportFrom)
+          } | {
+              alias.name.split(".")[0]
+              for node in ast.walk(tree)
+              if isinstance(node, ast.Import)
+              for alias in node.names
+          }
+          unexpected = imports & forbidden
+          if unexpected:
+              raise SystemExit(
+                  f"finding review imports forbidden promotion/execution capability: {sorted(unexpected)}"
+              )
+          PY

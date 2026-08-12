@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/finding-review.schema.json",
+  "title": "FinRedOps qualified finding review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_id",
+    "batch_id",
+    "batch_digest",
+    "finding_id",
+    "finding_fingerprint",
+    "assessment_type",
+    "disposition",
+    "reviewer_id",
+    "reviewer_role",
+    "qualification_evidence_ref",
+    "reviewed_at",
+    "rationale",
+    "validation_evidence_refs",
+    "final_severity",
+    "severity_override_reason",
+    "business_impact",
+    "recommendation",
+    "control_refs",
+    "control_profile_id",
+    "control_profile_digest",
+    "duplicate_of",
+    "human_review_asserted",
+    "review_digest",
+    "cryptographic_signature_present"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "finredops.finding-review.v1"
+    },
+    "review_id": {
+      "type": "string",
+      "pattern": "^FRX-REV-[A-F0-9]{24}$"
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^FRX-INTAKE-[A-F0-9]{24}$"
+    },
+    "batch_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "finding_id": {
+      "type": "string",
+      "pattern": "^FRX-SARIF-[A-F0-9]{24}$"
+    },
+    "finding_fingerprint": {
+      "$ref": "#/$defs/digest"
+    },
+    "assessment_type": {
+      "enum": [
+        "annual_bank_penetration",
+        "vendor_source_code_review",
+        "vendor_application_penetration",
+        "remediation_verification"
+      ]
+    },
+    "disposition": {
+      "enum": [
+        "confirmed",
+        "false_positive",
+        "duplicate",
+        "not_applicable"
+      ]
+    },
+    "reviewer_id": {
+      "$ref": "#/$defs/identity"
+    },
+    "reviewer_role": {
+      "const": "qualified_tester"
+    },
+    "qualification_evidence_ref": {
+      "type": "string",
+      "pattern": "^qualification-evidence://",
+      "maxLength": 500
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 50
+    },
+    "rationale": {
+      "$ref": "#/$defs/narrative"
+    },
+    "validation_evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(evidence|attachment|qualification-evidence)://",
+        "maxLength": 500
+      }
+    },
+    "final_severity": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "informational",
+        "low",
+        "medium",
+        "high",
+        "critical",
+        null
+      ]
+    },
+    "severity_override_reason": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "business_impact": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "recommendation": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "control_refs": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "control_profile_id": {
+      "const": "turkey-financial-assurance-v1"
+    },
+    "control_profile_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "duplicate_of": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "human_review_asserted": {
+      "const": true
+    },
+    "review_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "cryptographic_signature_present": {
+      "const": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "const": "confirmed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "final_severity": {
+            "type": "string"
+          },
+          "business_impact": {
+            "minLength": 20
+          },
+          "recommendation": {
+            "minLength": 20
+          },
+          "control_refs": {
+            "minItems": 1
+          },
+          "duplicate_of": {
+            "maxLength": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "final_severity": {
+            "type": "null"
+          },
+          "severity_override_reason": {
+            "maxLength": 0
+          },
+          "business_impact": {
+            "maxLength": 0
+          },
+          "recommendation": {
+            "maxLength": 0
+          },
+          "control_refs": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "const": "duplicate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "duplicate_of": {
+            "pattern": "^FRX-SARIF-[A-F0-9]{24}$"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "duplicate_of": {
+            "maxLength": 0
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "narrative": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 4000
+    }
+  }
+}

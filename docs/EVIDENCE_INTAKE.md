@@ -35,7 +35,10 @@ Machine severity is deliberately capped at `high`. SARIF `error`, `warning`,
 `note` and `none` levels are transport-level tool classifications, not a complete
 CVSS or business-risk decision. A qualified tester must examine the source
 evidence, reproduce or validate the condition, assess exploitability and impact,
-remove false positives, assign control mappings and approve report language.
+remove false positives and assign control mappings. v0.5.1 records that decision
+in a separate digest-bound workflow described in
+[Qualified finding review](FINDING_REVIEW.md). It still does not approve report
+language or promote a candidate into a report.
 
 ## Deterministic fingerprinting
 
@@ -87,7 +90,8 @@ legal hold and deletion policies.
 
 ## Deliberately deferred
 
-The first v0.5 slice does not include CycloneDX intake, CVSS 4.0 calculation,
-ASVS/control mapping, human disposition writes, report promotion or scanner
-execution. These require separate typed workflows, permissions, audit events and
-tests; they must not be inferred from SARIF fields alone.
+The current v0.5 slice does not include CycloneDX intake, CVSS 4.0 calculation,
+ASVS mapping, report promotion, authenticated reviewer identities, key-backed
+signatures or scanner execution. These require separate typed workflows,
+permissions, audit events and tests; they must not be inferred from SARIF fields
+alone.
