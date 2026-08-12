@@ -8,6 +8,9 @@ python -m finredops demo --output demo-output
 python -m finredops verify-audit demo-output/audit.jsonl
 python -m finredops validate-applicability demo-output/applicability.json
 python -m finredops validate-evidence-manifest demo-output/evidence-manifest.json
+python -m finredops import-sarif examples/synthetic_sast.sarif.json \
+  --output demo-output/finding-intake.json
+python -m finredops validate-intake demo-output/finding-intake.json
 python -m finredops verify-bundle demo-output/audit-dossier.zip
 python -m finredops verify-store demo-output/finredops.db FRX-DEMO-2026-001
 python -m finredops serve
@@ -22,6 +25,8 @@ Expected result:
 - the engagement passes the regulated-financial institution preflight;
 - the SQLite store preserves snapshot revisions and the exact audit prefix;
 - likely sensitive values are minimized before immutable evidence creation;
+- three synthetic SARIF results become two deduplicated, pending-review
+  candidates without embedding raw scanner output or source snippets;
 - a source-linked BDDK/SPK/KVKK/TSE/ISO crosswalk and annual-bank report draft are generated;
 - human-confirmed applicability and a metadata-only evidence custody chain are generated;
 - a deterministic review dossier verifies offline and remains blocked for

@@ -13,12 +13,13 @@ The model proposes typed actions; deterministic policy enforces scope, time,
 separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> Version 0.4 keeps simulation as the safe default and adds one explicitly enabled,
-> non-production **controlled-validation** action. It makes one bounded TLS `HEAD`
-> request, follows no redirects, collects no response body and creates draft
-> findings for human review. It is not a general-purpose exploit framework,
-> autonomous penetration tester, legal opinion, regulatory acceptance decision,
-> independent audit, or compliance certificate.
+> Version 0.5 keeps simulation as the safe default and the v0.4 active boundary
+> unchanged. It adds bounded **SARIF 2.1.0 evidence intake** that normalizes scanner
+> output into deduplicated candidates requiring qualified human review. Imported
+> results cannot become final findings or regulatory conclusions automatically.
+> FinRedOps is not a general-purpose exploit framework, autonomous penetration
+> tester, legal opinion, regulatory acceptance decision, independent audit, or
+> compliance certificate.
 
 ## Why this project exists
 
@@ -38,11 +39,13 @@ flowchart TD
     E --> G["Evidence receipt"]
     F --> H["Hash-chained audit"]
     G --> H
+    I["Untrusted SARIF"] --> J["Bounded intake + deduplication"]
+    J --> K["Pending qualified review"]
 ```
 
 ## Control model
 
-| Boundary | v0.4 behavior |
+| Boundary | v0.5 behavior |
 |---|---|
 | AI authority | May propose JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -54,6 +57,7 @@ flowchart TD
 | Active boundary | No redirects, body collection, discovery, crawling, payloads, credentials, shell or production active tests |
 | Institution preflight | Blocks unsafe scope breadth, production risk, contact, rate, and TTL settings |
 | Evidence handling | Deterministically redacts likely secrets, e-mail, valid IBAN and payment-card identifiers |
+| Machine result intake | Bounded SARIF 2.1.0, stable fingerprinting, safe locations, deterministic deduplication and mandatory human review |
 | Persistence | Append-only SQLite snapshot revisions plus exact audit-prefix verification |
 | Regulatory assurance | Human-confirmed BDDK, current SPK VII-128.10, KVKK, TSE TS 13638/T2 and ISO/IEC applicability plus source-linked conclusions |
 | Reporting | Annual bank, vendor source-code, vendor application and remediation templates |
@@ -77,6 +81,23 @@ approvers, the configured rate ceiling and an available kill switch. See
 [Controlled active validation](docs/CONTROLLED_VALIDATION.md) for the exact
 methodology, limits and enablement contract.
 
+## Machine finding intake in v0.5
+
+`import-sarif` accepts an uncompressed, size-bounded SARIF 2.1.0 file and creates
+a metadata-only canonical intake batch. It never runs the scanner, fetches an
+artifact URI, copies source snippets or promotes a result into a report.
+
+```bash
+python -m finredops import-sarif examples/synthetic_sast.sarif.json \
+  --output demo-output/finding-intake.json
+python -m finredops validate-intake demo-output/finding-intake.json
+```
+
+Tool levels are recorded as non-final machine severity. Every candidate remains
+`pending_review`; a qualified tester must validate the condition, business impact,
+final severity, evidence and control mappings. See
+[Machine finding intake](docs/EVIDENCE_INTAKE.md) for limits and threat boundaries.
+
 ## Run the visual demo
 
 Only Python 3.11+ is required; the package has no runtime dependencies.
@@ -87,6 +108,9 @@ python -m finredops demo --output demo-output
 python -m finredops verify-audit demo-output/audit.jsonl
 python -m finredops validate-applicability demo-output/applicability.json
 python -m finredops validate-evidence-manifest demo-output/evidence-manifest.json
+python -m finredops import-sarif examples/synthetic_sast.sarif.json \
+  --output demo-output/finding-intake.json
+python -m finredops validate-intake demo-output/finding-intake.json
 python -m finredops verify-bundle demo-output/audit-dossier.zip
 python -m finredops verify-store demo-output/finredops.db FRX-DEMO-2026-001
 python -m finredops validate-report demo-output/regulatory-report.json
@@ -149,6 +173,7 @@ src/finredops/
   catalog.py      closed catalog of typed actions
   runner.py       network-free synthetic evidence runner
   validation.py   optional bounded active validation and draft finding normalizer
+  intake.py       bounded SARIF parser and canonical review candidates
   evidence.py     sensitive-data minimization boundary
   custody.py      metadata-only evidence registry and custody hash chain
   audit.py        append-only SHA-256 hash chain
@@ -180,6 +205,7 @@ See [Türkiye regulatory profile](docs/TURKEY_REGULATORY_MAPPING.md),
 [Reporting model](docs/REPORTING_MODEL.md), [Safety boundary](docs/SAFETY_BOUNDARY.md),
 [Applicability](docs/APPLICABILITY.md), [Chain of custody](docs/CHAIN_OF_CUSTODY.md),
 [Audit dossier](docs/AUDIT_DOSSIER.md), [Controlled validation](docs/CONTROLLED_VALIDATION.md),
+[Machine finding intake](docs/EVIDENCE_INTAKE.md),
 [Threat model](docs/THREAT_MODEL.md), and
 [Roadmap](docs/ROADMAP.md).
 
@@ -199,6 +225,7 @@ The design is informed by, but does not claim conformance with:
 - [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
 - [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
 - [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
+- [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)
 
 ## Contributing
 

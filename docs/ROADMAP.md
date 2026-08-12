@@ -32,7 +32,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] deterministic audit dossier and safe offline verifier;
 - [x] CLI, read-only API, dashboard, JSON schemas and integrity tests;
 
-## v0.4 — bounded active validation (current branch)
+## v0.4 — bounded active validation
 
 - [x] simulation remains the default execution mode;
 - [x] explicit controlled-runner injection and read-only capability visibility;
@@ -47,6 +47,20 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [ ] approved source-package SAST/dependency/secret-analysis adapters;
 - [ ] independently reviewed production-validation policy overlay;
 - [ ] qualified tester UX for false-positive disposition and severity override;
+
+## v0.5 — evidence intake and qualified review (current branch)
+
+- [x] bounded, uncompressed UTF-8 SARIF 2.1.0 intake;
+- [x] deterministic canonical finding fingerprints and duplicate correlation;
+- [x] safe repository-relative or opaque artifact references;
+- [x] secret/identifier minimization and source-snippet exclusion;
+- [x] non-final machine severity/confidence and mandatory human-review state;
+- [x] strict JSON contract, digest verification, CLI, synthetic example and tests;
+- [ ] CycloneDX 1.7 SBOM and vulnerability intake;
+- [ ] signed qualified-tester disposition and rationale workflow;
+- [ ] CVSS 4.0 vector validation with separate financial business impact;
+- [ ] versioned OWASP ASVS 5.0.0 requirement coverage;
+- [ ] controlled promotion from confirmed candidates into draft reports;
 
 ## Platform hardening
 

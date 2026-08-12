@@ -203,7 +203,7 @@ def create_read_only_server(
             body = _json_bytes(
                 {
                     "error": "method_not_allowed",
-                    "message": "The v0.4 demonstration API is deliberately read-only.",
+                    "message": "The v0.5 demonstration API is deliberately read-only.",
                 }
             )
             self.send_response(405)

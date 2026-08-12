@@ -51,6 +51,16 @@ eşlemesi içerir. Yüksek/kritik açık bulguya sorumlu ve hedef tarih atanmas�
 zorunludur. `passed` yeniden test sonucu ancak tarih ve özgün kapanış kanıtıyla
 geçerlidir. Böylece testin yapılmasıyla riskin giderilmesi birbirinden ayrılır.
 
+### Makine bulgusu kabul sınırı
+
+v0.5 SARIF sonuçlarını doğrudan `SecurityFinding` kaydına dönüştürmez. İçe
+aktarılan her kayıt `pending_review` durumunda, makine tarafından önerilen fakat
+nihai olmayan önem/güven değerleriyle ayrı bir kanonik adaydır. Rapor bulgusuna
+dönüşüm için yetkin test uzmanının en azından yeniden üretim veya kanıt doğrulama,
+yanlış pozitif/tekrar kararı, iş etkisi, nihai önem, öneri, kanıt ve kontrol
+eşlemesini kaydetmesi gerekir. Bu terfi iş akışı ilk v0.5 diliminde özellikle
+uygulanmamıştır; SARIF alanlarından otomatik düzenleyici sonuç çıkarılamaz.
+
 ## Düzenleyici çapraz kontrol
 
 Rapor motoru seçilen değerlendirme türüne uygulanabilir tüm profil kontrollerini

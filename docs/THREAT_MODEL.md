@@ -8,7 +8,7 @@
 - evidence integrity and audit continuity;
 - institution and customer data that must never enter this prototype.
 
-## Principal threats and v0.4 mitigations
+## Principal threats and v0.5 mitigations
 
 | Threat | Mitigation | Residual limitation |
 |---|---|---|
@@ -22,6 +22,12 @@
 | Active request escapes target | Exact scope, exclusions, one-time DNS resolution, unsafe-address denial, no redirects | Asset ownership and DNS control remain external |
 | Active validation affects service | One HEAD request, 1–5 second timeout, engagement rate ceiling, non-production restriction and kill-switch checks | Distributed stop propagation and service-side behavior remain external |
 | Response leaks sensitive data | No response body; cookie values and redirect locations are not persisted; peer address is digested | Headers can still contain unexpected sensitive values before minimization |
+| Malformed SARIF exhausts the intake process | Uncompressed UTF-8 only; file, run, result, rule, tag, position and stored-text limits; invalid structures fail closed | A production service still needs process/memory quotas and malware controls |
+| SARIF artifact URI leaks a workstation path or triggers retrieval | No URI dereference; only safe repository-relative paths survive; absolute, external and traversal locations become opaque digests | Reviewers need vault access to correlate opaque locations with raw evidence |
+| Scanner output carries secrets or source snippets | Sensitive text is minimized; embedded snippets/fixes/flows are ignored; raw SARIF is not embedded | Institution DLP and evidence-vault controls remain authoritative |
+| Scanner result is treated as a confirmed vulnerability | Imported severity is explicitly non-final, capped at high and fixed to pending human review | Qualified testers can still make an incorrect disposition |
+| Duplicate scanner output inflates risk counts | Stable tool/rule fingerprints and deterministic occurrence merging | Poor source fingerprints can still reduce correlation quality |
+| Canonical intake is altered after import | Source and batch SHA-256 digests plus strict round-trip validation | Digests are not external signatures or immutable timestamps |
 | Operational failure becomes a false finding | Failure receipts carry safe codes and no vulnerability | Human reviewers must still assess incomplete coverage |
 | Activity continues during an incident | Emergency stop plus paused state | Distributed kill-switch propagation is future work |
 | Audit history is edited | Previous-hash chain and verifier | A privileged actor could replace the whole unanchored log |
@@ -49,6 +55,7 @@ change violates the project boundary even if guarded by a prompt.
 The demo runs locally, contains synthetic data, and is operated by a trusted
 developer. The default demo remains simulation-only and its API is read-only but
 unauthenticated. Explicit active validation is limited to approved non-production
-targets. The project does not provide
+targets. SARIF import reads a local file but performs no scanner execution,
+artifact retrieval or report promotion. The project does not provide
 authenticated identities, multi-tenancy, high availability, institution-owned
 key management, evidence-vault controls, or regulatory record retention.

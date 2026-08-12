@@ -16,6 +16,8 @@
 - policy denials, emergency pause, evidence receipts, and audit verification;
 - institution-policy preflight and durable SQLite revisions;
 - deterministic redaction of likely secrets and regulated identifiers;
+- bounded SARIF 2.1.0 intake that emits deduplicated pending-review candidates,
+  never final findings or automatic control conclusions;
 - source-linked regulatory crosswalk and audit-support report templates;
 - human-confirmed BDDK/SPK/KVKK/TSE/ISO applicability decisions;
 - metadata-only evidence manifest, chain of custody, report delta and
@@ -58,6 +60,10 @@ Default-demo receipts are generated from bundled fixtures and include
 metadata and draft findings; they are not an assurance opinion, final
 penetration-test result or certification until a qualified human validates the
 scope, evidence, severity, impact and conclusion.
+
+Imported SARIF remains untrusted evidence. FinRedOps records its digest and a
+minimized candidate view, but it does not execute the producing tool, fetch
+artifact URIs, embed source snippets or determine that the observation is valid.
 
 Regulatory reports are audit-support drafts. BDDK/SPK applicability, TSE
 TS 13638/T2 scope and delivery deadlines require authorized human confirmation;

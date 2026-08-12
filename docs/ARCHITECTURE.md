@@ -1,7 +1,8 @@
 # Architecture
 
-FinRedOps v0.4 is a small reference control plane with one bounded active
-validation primitive, not a general-purpose scanner. Its central
+FinRedOps v0.5 is a small reference control plane with one bounded active
+validation primitive and one defensive scanner-evidence intake boundary, not a
+general-purpose scanner. Its central
 design choice is to separate probabilistic planning from deterministic
 authorization and execution.
 
@@ -45,6 +46,9 @@ authorization and execution.
     control changes explicit between report revisions.
 17. **Audit dossier builder** creates a deterministic metadata-only ZIP and
     verifies paths, sizes, digests and embedded documents without extraction.
+18. **Finding intake** treats SARIF 2.1.0 as untrusted evidence, applies bounded
+    parsing, minimizes sensitive text, normalizes safe locations, correlates
+    stable fingerprints and emits only human-review candidates.
 
 ## Trust boundaries
 
@@ -61,6 +65,9 @@ flowchart LR
       X["Synthetic runner"]
       V["Optional bounded validator"]
     end
+    subgraph I["Untrusted evidence intake"]
+      F["Bounded SARIF parser"] --> Q["Pending review candidates"]
+    end
     A --> B
     P --> X
     P --> V
@@ -68,7 +75,9 @@ flowchart LR
 
 Model output is untrusted data throughout. It never becomes executable text.
 The v0.4 active path accepts only typed scalar parameters and remains disabled
-unless an integrator injects the bounded runner.
+unless an integrator injects the bounded runner. The v0.5 intake path never
+executes a tool or dereferences an artifact URI; its output cannot bypass the
+human report-review boundary.
 
 ## State and persistence
 
@@ -93,6 +102,9 @@ flowchart TD
     M --> R["Audit-support report"]
     C["Versioned TR control profile"] --> R
     APL["Human applicability"] --> R
+    SI["SARIF source digest"] --> IC["Canonical pending candidates"]
+    IC --> HR["External qualified validation"]
+    HR --> R
     R --> H["Audit dossier + human review"]
 ```
 
@@ -102,4 +114,4 @@ Additional live modules should be separate signed workers with short-lived
 workload identity, outbound allowlisting, isolated execution, an
 institution-owned policy decision point, and no arbitrary-command interface.
 Production testing, authentication flows and invasive validation remain absent
-from v0.4 and require independent threat, legal and control review.
+from v0.5 and require independent threat, legal and control review.

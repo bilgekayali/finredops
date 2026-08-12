@@ -38,3 +38,6 @@ size/path limits, metadata-only packaging and offline tamper detection.
 Controlled validators must use a closed action, exact target scope, explicit
 enablement, non-production tests, deterministic evidence minimization, bounded
 requests, no redirects, no payloads and failure-path tests.
+Defensive importers must use strict versioned contracts, byte/item/depth-related
+limits, no URI dereference or archive extraction, safe path normalization,
+sensitive-data minimization, deterministic output and tamper-detection tests.

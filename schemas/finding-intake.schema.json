@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/finding-intake.schema.json",
+  "title": "FinRedOps machine-finding intake batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "batch_id",
+    "source_format",
+    "source_version",
+    "source_content_sha256",
+    "source_size_bytes",
+    "source_evidence_ref",
+    "run_count",
+    "result_count",
+    "duplicate_result_count",
+    "unsafe_location_count",
+    "redacted_result_count",
+    "tools",
+    "findings",
+    "human_review_required",
+    "raw_source_embedded",
+    "batch_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "finredops.finding-intake.v1"
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^FRX-INTAKE-[A-F0-9]{24}$"
+    },
+    "source_format": {
+      "const": "sarif"
+    },
+    "source_version": {
+      "const": "2.1.0"
+    },
+    "source_content_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "source_size_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000000
+    },
+    "source_evidence_ref": {
+      "type": "string",
+      "pattern": "^evidence://sarif/[a-f0-9]{64}$"
+    },
+    "run_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "result_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20000
+    },
+    "duplicate_result_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20000
+    },
+    "unsafe_location_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20000
+    },
+    "redacted_result_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20000
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      }
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "human_review_required": {
+      "const": true
+    },
+    "raw_source_embedded": {
+      "const": false
+    },
+    "batch_digest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "position": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 10000000
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "fingerprint",
+        "source_tool",
+        "source_tool_version",
+        "rule_id",
+        "title",
+        "machine_severity",
+        "machine_confidence",
+        "message",
+        "artifact_ref",
+        "start_line",
+        "start_column",
+        "evidence_ref",
+        "tags",
+        "occurrence_count",
+        "redaction_kinds",
+        "review_disposition",
+        "human_validation_required"
+      ],
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "pattern": "^FRX-SARIF-[A-F0-9]{24}$"
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/digest"
+        },
+        "source_tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "source_tool_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "machine_severity": {
+          "enum": [
+            "informational",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "machine_confidence": {
+          "enum": [
+            "unknown",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "artifact_ref": {
+          "type": "string",
+          "pattern": "^(repo|artifact-digest)://"
+        },
+        "start_line": {
+          "$ref": "#/$defs/position"
+        },
+        "start_column": {
+          "$ref": "#/$defs/position"
+        },
+        "evidence_ref": {
+          "type": "string",
+          "pattern": "^evidence://sarif/[a-f0-9]{64}/[a-f0-9]{64}$"
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "occurrence_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "redaction_kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "secret_field",
+              "payment_card",
+              "iban",
+              "email",
+              "bearer_token"
+            ]
+          }
+        },
+        "review_disposition": {
+          "const": "pending_review"
+        },
+        "human_validation_required": {
+          "const": true
+        }
+      }
+    }
+  }
+}
