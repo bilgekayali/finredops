@@ -16,11 +16,22 @@ separation of duties, immutable approvals, and a closed action catalog.
 > Version 0.5.1 keeps simulation as the safe default and the v0.4 active boundary
 > unchanged. It adds bounded **SARIF 2.1.0 evidence intake** plus a digest-bound
 > qualified-tester disposition workflow. Risk acceptance requires a separate,
-> time-bounded business-owner decision. Reviewed results still cannot become
-> final findings or regulatory conclusions automatically.
+> time-bounded business-owner decision. Reviewed results may be promoted only
+> through an explicit fail-closed boundary into a **draft** report; issuance,
+> regulatory conclusions and human approvals remain separate.
 > FinRedOps is not a general-purpose exploit framework, autonomous penetration
 > tester, legal opinion, regulatory acceptance decision, independent audit, or
 > compliance certificate.
+
+## Example reviewed security report
+
+A repository-visible synthetic example of the governed
+**SARIF → qualified review → draft report** flow is available here:
+
+**[Open the example security report](EXAMPLE_SECURITY_REPORT.md)**
+
+The example contains no live-target data and is intentionally retained as a
+`draft`, human-approval-required audit-support artifact.
 
 ## Why this project exists
 
@@ -42,6 +53,7 @@ flowchart TD
     G --> H
     I["Untrusted SARIF"] --> J["Bounded intake + deduplication"]
     J --> K["Pending qualified review"]
+    K --> L["Explicit draft-report promotion boundary"]
 ```
 
 ## Control model
@@ -60,6 +72,7 @@ flowchart TD
 | Evidence handling | Deterministically redacts likely secrets, e-mail, valid IBAN and payment-card identifiers |
 | Machine result intake | Bounded SARIF 2.1.0, stable fingerprinting, safe locations, deterministic deduplication and mandatory human review |
 | Finding disposition | Assessment- and digest-bound qualified-tester decision with evidence, severity-override rationale and direct duplicate correlation |
+| Draft report promotion | Explicit fail-closed boundary; complete review set plus human-supplied asset, owner and due date; never issues a report |
 | Risk acceptance | Separate business risk owner, compensating controls, approval evidence and 1–366 day expiry |
 | Persistence | Append-only SQLite snapshot revisions plus exact audit-prefix verification |
 | Regulatory assurance | Human-confirmed BDDK, current SPK VII-128.10, KVKK, TSE TS 13638/T2 and ISO/IEC applicability plus source-linked conclusions |
@@ -123,9 +136,11 @@ python -m finredops validate-finding-review \
 
 Decisions are `confirmed`, `false_positive`, `duplicate`, or `not_applicable`.
 Only a confirmed review can receive a separately recorded, expiring
-`business_risk_owner` acceptance. Review summaries never promote records into a
-report. See [Qualified finding review](docs/FINDING_REVIEW.md) for the complete
-workflow, acceptance commands and trust limits.
+`business_risk_owner` acceptance. A separate promotion boundary may assemble a
+complete qualified-review set into a **draft** report, but it cannot issue that
+report or supply human report approvals. See
+[Qualified finding review](docs/FINDING_REVIEW.md) and
+[Reviewed report promotion](docs/REVIEWED_REPORT_PROMOTION.md).
 
 ## Run the visual demo
 
@@ -204,6 +219,7 @@ src/finredops/
   validation.py   optional bounded active validation and draft finding normalizer
   intake.py       bounded SARIF parser and canonical review candidates
   review.py       qualified disposition, role-separated risk acceptance and queue summary
+  promotion.py    explicit reviewed-finding to draft-report boundary
   evidence.py     sensitive-data minimization boundary
   custody.py      metadata-only evidence registry and custody hash chain
   audit.py        append-only SHA-256 hash chain
@@ -237,6 +253,7 @@ See [Türkiye regulatory profile](docs/TURKEY_REGULATORY_MAPPING.md),
 [Audit dossier](docs/AUDIT_DOSSIER.md), [Controlled validation](docs/CONTROLLED_VALIDATION.md),
 [Machine finding intake](docs/EVIDENCE_INTAKE.md),
 [Qualified finding review](docs/FINDING_REVIEW.md),
+[Reviewed report promotion](docs/REVIEWED_REPORT_PROMOTION.md),
 [Threat model](docs/THREAT_MODEL.md), and
 [Roadmap](docs/ROADMAP.md).
 
