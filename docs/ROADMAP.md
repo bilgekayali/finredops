@@ -64,7 +64,20 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [ ] engagement/authorization binding plus review supersession and revocation;
 - [ ] CVSS 4.0 vector validation with separate financial business impact;
 - [ ] versioned OWASP ASVS 5.0.0 requirement coverage;
-- [ ] controlled promotion from confirmed candidates into draft reports;
+- [x] controlled promotion from confirmed candidates into draft reports;
+
+## v0.6 — end-to-end operator workflow
+
+- [x] one top-level `finredops` command surface for legacy and reviewed-report workflows;
+- [x] complete-review `reviewed-report-spec-template` generation;
+- [x] explicit `promote-reviewed-report` operator command;
+- [x] reproducible `demo-reviewed-report` command for the repository-visible synthetic example;
+- [x] fail-closed rejection of unfinished template placeholders;
+- [x] no-overwrite protection for generated operator artifacts;
+- [x] package and `python -m finredops` entrypoints routed through the operator CLI;
+- [x] Python 3.11/3.12/3.13 end-to-end CLI regression coverage;
+- [ ] signed release artifacts and provenance attestation;
+- [ ] packaged example inputs for installed-wheel demonstrations;
 
 ## Platform hardening
 
