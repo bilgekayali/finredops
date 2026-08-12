@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finredops"
-version = "0.5.1"
+version = "0.6.0"
 description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -43,7 +43,7 @@ Repository = "https://github.com/bilgekayali/finredops"
 Issues = "https://github.com/bilgekayali/finredops/issues"
 
 [project.scripts]
-finredops = "finredops.cli:entrypoint"
+finredops = "finredops.operator_cli:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]

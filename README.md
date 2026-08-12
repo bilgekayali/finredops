@@ -8,38 +8,37 @@
 [![Safety](https://img.shields.io/badge/active-validation%20approval--gated-ffc764.svg)](docs/SAFETY_BOUNDARY.md)
 
 FinRedOps is an open-source control-plane prototype for teams that need to use
-AI in security-testing workflows without letting a model decide what may run.
-The model proposes typed actions; deterministic policy enforces scope, time,
-separation of duties, immutable approvals, and a closed action catalog.
+AI in security-testing workflows without allowing a model to decide what may
+run. Models may propose typed actions; deterministic policy enforces scope,
+time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> Version 0.5.1 keeps simulation as the safe default and the v0.4 active boundary
-> unchanged. It adds bounded **SARIF 2.1.0 evidence intake** plus a digest-bound
-> qualified-tester disposition workflow. Risk acceptance requires a separate,
-> time-bounded business-owner decision. Reviewed results may be promoted only
-> through an explicit fail-closed boundary into a **draft** report; issuance,
-> regulatory conclusions and human approvals remain separate.
-> FinRedOps is not a general-purpose exploit framework, autonomous penetration
-> tester, legal opinion, regulatory acceptance decision, independent audit, or
-> compliance certificate.
+> **Version 0.6.0** keeps simulation as the safe default and preserves the
+> bounded v0.4 active-validation boundary. It adds one end-to-end operator
+> workflow across SARIF evidence intake, qualified finding review, explicit
+> draft-report promotion, report validation, and reproducible synthetic output.
+> Report issuance and human approval remain outside automation.
+
+FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
+tester, legal opinion, regulatory acceptance decision, independent audit, or
+compliance certificate.
 
 ## Example reviewed security report
 
-A repository-visible synthetic example of the governed
-**SARIF → qualified review → draft report** flow is available here:
+The repository contains a readable synthetic output of the governed
+**SARIF → qualified review → draft report** workflow:
 
 **[Open the example security report](EXAMPLE_SECURITY_REPORT.md)**
 
-The example contains no live-target data and is intentionally retained as a
-`draft`, human-approval-required audit-support artifact.
+The example contains no live-target data and remains a `draft`,
+human-approval-required audit-support artifact.
 
 ## Why this project exists
 
-In a highly regulated environment, “the AI decided to run it” is not an
-acceptable authorization model. A defensible workflow needs explicit rules of
-engagement, accountable people, constrained execution, reversible controls,
-and evidence that can be independently reviewed. FinRedOps makes those
-boundaries visible in code.
+In regulated environments, “the AI decided to run it” is not an acceptable
+authorization model. A defensible workflow requires explicit rules of
+engagement, accountable people, constrained execution, evidence minimization,
+reversible controls, and an audit trail that can be independently reviewed.
 
 ```mermaid
 flowchart TD
@@ -52,233 +51,211 @@ flowchart TD
     F --> H["Hash-chained audit"]
     G --> H
     I["Untrusted SARIF"] --> J["Bounded intake + deduplication"]
-    J --> K["Pending qualified review"]
-    K --> L["Explicit draft-report promotion boundary"]
+    J --> K["Qualified human review"]
+    K --> L["Explicit draft-report promotion"]
+    L --> M["Validated draft report"]
 ```
 
-## Control model
+## Core control model
 
-| Boundary | v0.5 behavior |
+| Boundary | v0.6 behavior |
 |---|---|
-| AI authority | May propose JSON only; cannot authorize or execute |
+| AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
 | Action scope | Closed typed catalog; no free-form command field |
-| Engagement approval | Business owner + control team; distinct people |
-| Action approval | Passive: control team + execution approver; controlled: business owner + control team + execution approver; distinct people |
-| Approval integrity | Bound to SHA-256 digest and expiry time |
+| Approvals | Role-separated, digest-bound, time-limited human decisions |
 | Execution | Simulation by default; optional one-request TLS `HEAD` validation on approved non-production targets |
-| Active boundary | No redirects, body collection, discovery, crawling, payloads, credentials, shell or production active tests |
-| Institution preflight | Blocks unsafe scope breadth, production risk, contact, rate, and TTL settings |
-| Evidence handling | Deterministically redacts likely secrets, e-mail, valid IBAN and payment-card identifiers |
-| Machine result intake | Bounded SARIF 2.1.0, stable fingerprinting, safe locations, deterministic deduplication and mandatory human review |
-| Finding disposition | Assessment- and digest-bound qualified-tester decision with evidence, severity-override rationale and direct duplicate correlation |
-| Draft report promotion | Explicit fail-closed boundary; complete review set plus human-supplied asset, owner and due date; never issues a report |
-| Risk acceptance | Separate business risk owner, compensating controls, approval evidence and 1–366 day expiry |
-| Persistence | Append-only SQLite snapshot revisions plus exact audit-prefix verification |
-| Regulatory assurance | Human-confirmed BDDK, current SPK VII-128.10, KVKK, TSE TS 13638/T2 and ISO/IEC applicability plus source-linked conclusions |
-| Reporting | Annual bank, vendor source-code, vendor application and remediation templates |
-| Evidence custody | Opaque locators, content digests, retention metadata and a separate append-only hash chain |
-| Revision control | New/missing/closed/reopened findings plus severity, retest and control deltas |
-| Delivery | Deterministic metadata-only ZIP with offline path, size, digest and embedded-document verification |
-| Kill switch | Control or execution approver can pause immediately |
-| Accountability | Append-only hash chain with offline verification |
+| Active boundary | No redirects, response-body collection, discovery, crawling, payloads, credentials, shell, or production active tests |
+| Evidence handling | Deterministic minimization and redaction of likely sensitive identifiers |
+| Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
+| Finding disposition | Qualified-tester decision with evidence, final severity, impact, recommendation, and control mapping |
+| Risk acceptance | Separate business risk owner with compensating controls and expiry |
+| Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
+| Operator workflow | One CLI surface for legacy commands, report-spec templates, promotion, and synthetic demonstration |
+| Reporting | Audit-support report templates and deterministic validation |
+| Accountability | Append-only hash chain and offline-verifiable artifacts |
 
-## Controlled validation in v0.4
+## v0.6 end-to-end operator workflow
 
-The first active module is intentionally narrow. `http.security_posture.validate`
-checks one approved HTTPS response for HSTS, CSP, MIME-sniffing protection,
-cookie attributes and certificate expiry. Findings are deterministic,
-evidence-linked and always marked for qualified human validation.
-
-The default demo still has no outbound target access. Enabling the network
-transport requires explicit code-level injection, a non-production engagement,
-an institution change/rules-of-engagement reference, three distinct proposal
-approvers, the configured rate ceiling and an available kill switch. See
-[Controlled active validation](docs/CONTROLLED_VALIDATION.md) for the exact
-methodology, limits and enablement contract.
-
-## Machine finding intake in v0.5
-
-`import-sarif` accepts an uncompressed, size-bounded SARIF 2.1.0 file and creates
-a metadata-only canonical intake batch. It never runs the scanner, fetches an
-artifact URI, copies source snippets or promotes a result into a report.
-
-```bash
-python -m finredops import-sarif examples/synthetic_sast.sarif.json \
-  --output demo-output/finding-intake.json
-python -m finredops validate-intake demo-output/finding-intake.json
-```
-
-Tool levels are recorded as non-final machine severity. Every candidate remains
-`pending_review`; a qualified tester must validate the condition, business impact,
-final severity, evidence and control mappings. See
-[Machine finding intake](docs/EVIDENCE_INTAKE.md) for limits and threat boundaries.
-
-## Qualified finding review in v0.5.1
-
-Create a draft for one candidate, let a qualified tester complete it, then
-finalize and validate the digest-bound decision:
-
-```bash
-python -m finredops finding-review-template \
-  --intake demo-output/finding-intake.json \
-  --finding-id FRX-SARIF-REPLACE-WITH-CANDIDATE-ID \
-  --assessment-type vendor_source_code_review \
-  --output review-draft.json
-python -m finredops finalize-finding-review \
-  --intake demo-output/finding-intake.json \
-  --draft review-draft.json \
-  --output review.json
-python -m finredops validate-finding-review \
-  --intake demo-output/finding-intake.json \
-  --review review.json
-```
-
-Decisions are `confirmed`, `false_positive`, `duplicate`, or `not_applicable`.
-Only a confirmed review can receive a separately recorded, expiring
-`business_risk_owner` acceptance. A separate promotion boundary may assemble a
-complete qualified-review set into a **draft** report, but it cannot issue that
-report or supply human report approvals. See
-[Qualified finding review](docs/FINDING_REVIEW.md) and
-[Reviewed report promotion](docs/REVIEWED_REPORT_PROMOTION.md).
-
-## Run the visual demo
-
-Only Python 3.11+ is required; the package has no runtime dependencies.
+Install the package in editable mode:
 
 ```bash
 python -m pip install -e .
+```
+
+### 1. Import scanner evidence
+
+```bash
+finredops import-sarif examples/synthetic_sast.sarif.json \
+  --output work/finding-intake.json
+finredops validate-intake work/finding-intake.json
+```
+
+### 2. Review every candidate
+
+```bash
+finredops finding-review-template \
+  --intake work/finding-intake.json \
+  --finding-id FRX-SARIF-REPLACE-ME \
+  --assessment-type vendor_source_code_review \
+  --output work/review-draft.json
+
+finredops finalize-finding-review \
+  --intake work/finding-intake.json \
+  --draft work/review-draft.json \
+  --output work/review.json
+```
+
+Every candidate must receive one finalized human disposition before report
+promotion can proceed.
+
+### 3. Create the reviewed-report specification
+
+```bash
+finredops reviewed-report-spec-template \
+  --intake work/finding-intake.json \
+  --assessment-type vendor_source_code_review \
+  --review work/review-1.json \
+  --review work/review-2.json \
+  --output work/reviewed-report-spec.json
+```
+
+The generated template is intentionally incomplete. The operator must replace
+all `TODO` and date placeholders with accountable assessment metadata.
+FinRedOps refuses to promote an unfinished template.
+
+### 4. Promote reviewed findings into a draft report
+
+```bash
+finredops promote-reviewed-report \
+  --intake work/finding-intake.json \
+  --review work/review-1.json \
+  --review work/review-2.json \
+  --spec work/reviewed-report-spec.json \
+  --output-dir work/reviewed-report
+```
+
+Optional finalized business risk acceptances may be supplied with repeated
+`--acceptance` arguments.
+
+The command produces:
+
+```text
+regulatory-report.json
+regulatory-report.md
+promotion-manifest.json
+```
+
+Existing operator outputs are not overwritten. The resulting report is always
+`draft` and remains `ready_for_issue: false` until separate human report
+approvals are provided.
+
+### 5. Validate and render independently
+
+```bash
+finredops validate-report work/reviewed-report/regulatory-report.json
+finredops render-report work/reviewed-report/regulatory-report.json \
+  --output work/reviewed-report/verified-report.md
+```
+
+For the complete sequence, see
+**[v0.6 Operator Workflow](docs/OPERATOR_WORKFLOW.md)**.
+
+## Reproduce the reviewed-report demo
+
+```bash
+finredops demo-reviewed-report \
+  --sarif examples/synthetic_sast.sarif.json \
+  --output-dir demo-output/reviewed
+```
+
+This creates canonical intake, two finalized synthetic reviews, one promoted
+finding, a draft JSON/Markdown report, and a promotion manifest. No live target
+is contacted.
+
+## Existing visual and assurance demo
+
+```bash
 python -m finredops demo --output demo-output
 python -m finredops verify-audit demo-output/audit.jsonl
-python -m finredops validate-applicability demo-output/applicability.json
-python -m finredops validate-evidence-manifest demo-output/evidence-manifest.json
-python -m finredops import-sarif examples/synthetic_sast.sarif.json \
-  --output demo-output/finding-intake.json
-python -m finredops validate-intake demo-output/finding-intake.json
-python -m finredops verify-bundle demo-output/audit-dossier.zip
 python -m finredops verify-store demo-output/finredops.db FRX-DEMO-2026-001
 python -m finredops validate-report demo-output/regulatory-report.json
+python -m finredops validate-applicability demo-output/applicability.json
+python -m finredops validate-evidence-manifest demo-output/evidence-manifest.json
+python -m finredops verify-bundle demo-output/audit-dossier.zip
 python -m finredops render-report demo-output/regulatory-report.json \
   --output demo-output/verified-report.md
 python -m finredops serve --host 127.0.0.1 --port 8080
 ```
 
-Open `http://127.0.0.1:8080`. The demo creates:
-
-- a synthetic engagement with exact scope and one explicit exclusion;
-- two digest-bound engagement approvals;
-- four AI-style structured proposals and two approvals per proposal;
-- three simulated evidence receipts and one intentional policy denial;
-- a standalone operations dashboard and read-only local API;
-- a JSON snapshot, hash-chained audit JSONL, and SQLite durable store;
-- a BDDK/SPK/KVKK/TSE/ISO regulatory crosswalk plus Markdown/JSON report;
-- a human-confirmed applicability document and metadata-only custody manifest;
-- a deterministic, offline-verifiable human-review audit dossier.
-
-Create a fillable report template for any supported assessment:
-
-```bash
-python -m finredops report-template \
-  --type vendor_source_code_review \
-  --output vendor-source-review.json
-python -m finredops validate-engagement examples/synthetic_engagement.json
-python -m finredops validate-plan examples/synthetic_ai_plan.json \
-  --engagement examples/synthetic_engagement.json
-```
-
-Compare a remediation report with its baseline, or rebuild a review dossier
-from approved JSON artifacts:
-
-```bash
-python -m finredops compare-reports baseline-report.json current-report.json \
-  --output report-delta.json
-python -m finredops build-bundle \
-  --report current-report.json \
-  --applicability applicability.json \
-  --evidence-manifest evidence-manifest.json \
-  --audit audit.jsonl \
-  --output audit-dossier.zip \
-  --purpose human_review
-```
-
-Docker is optional:
-
-```bash
-docker build -t finredops .
-docker run --rm -p 8080:8080 finredops
-```
+The demo includes a synthetic engagement, digest-bound approvals, policy
+decisions, evidence receipts, an intentional denial, an operations dashboard,
+SQLite persistence, regulatory crosswalks, evidence custody, and an offline
+review dossier.
 
 ## Repository map
 
 ```text
 src/finredops/
-  planner.py      strict AI-to-control-plane boundary
-  policy.py       deterministic, deny-by-default authorization
-  catalog.py      closed catalog of typed actions
-  runner.py       network-free synthetic evidence runner
-  validation.py   optional bounded active validation and draft finding normalizer
-  intake.py       bounded SARIF parser and canonical review candidates
-  review.py       qualified disposition, role-separated risk acceptance and queue summary
-  promotion.py    explicit reviewed-finding to draft-report boundary
-  evidence.py     sensitive-data minimization boundary
-  custody.py      metadata-only evidence registry and custody hash chain
-  audit.py        append-only SHA-256 hash chain
-  store.py        transactional SQLite revisions and audit persistence
-  service.py      engagement and approval state machine
-  profiles.py     financial-institution preflight policy
-  regulations.py versioned Turkish regulatory control registry
-  applicability.py human-confirmed authority/standards scope decisions
-  reporting.py   audit-support validation, crosswalk, and renderer
-  diffing.py      report revision and remediation delta
-  bundle.py       deterministic audit dossier builder and verifier
-  api.py          loopback-first read-only API
-  dashboard.py    self-contained operations interface
-schemas/          versioned engagement, plan, intake, review, report, custody, delta, and dossier contracts
-docs/             architecture, safety, reporting, and regulatory mapping
-examples/         synthetic, reserved-namespace input documents
-tests/            policy, integrity, boundary, and end-to-end tests
+  planner.py       strict AI-to-control-plane boundary
+  policy.py        deterministic deny-by-default authorization
+  catalog.py       closed catalog of typed actions
+  runner.py        network-free synthetic evidence runner
+  validation.py    optional bounded active validation
+  intake.py        bounded SARIF parser and canonical candidates
+  review.py        qualified disposition and role-separated risk acceptance
+  promotion.py     explicit reviewed-finding to draft-report boundary
+  operator_cli.py  v0.6 unified operator workflow and legacy delegation
+  evidence.py      sensitive-data minimization boundary
+  custody.py       metadata-only evidence registry and custody hash chain
+  audit.py         append-only SHA-256 audit chain
+  store.py         transactional SQLite revisions and audit persistence
+  service.py       engagement and approval state machine
+  profiles.py      financial-institution preflight policy
+  regulations.py  versioned Turkish regulatory control registry
+  applicability.py human-confirmed regulatory/standards scope
+  reporting.py     audit-support validation, crosswalk, and renderer
+  diffing.py       report revision and remediation delta
+  bundle.py        deterministic audit dossier builder and verifier
+  api.py           loopback-first read-only API
+  dashboard.py     self-contained operations interface
+schemas/           versioned data contracts
+docs/              architecture, safety, assurance, and operator workflow
+examples/          synthetic reserved-namespace inputs
+tests/             policy, integrity, boundary, and end-to-end tests
 ```
 
 ## Trust claims—and limits
 
-FinRedOps demonstrates technical design patterns that can support governed
-security testing. Hash chaining provides **tamper evidence**, not non-repudiation.
+FinRedOps demonstrates technical patterns that can support governed security
+testing. Hash chaining provides **tamper evidence**, not non-repudiation.
 SQLite is durable demonstration storage, not an authenticated multi-tenant
-system of record. A generated report is an **audit-support draft** until scoped,
-tested, evidenced, independently reviewed, and signed by authorized humans.
-Mappings do not establish legal applicability, certification, or compliance.
-See [Türkiye regulatory profile](docs/TURKEY_REGULATORY_MAPPING.md),
-[Reporting model](docs/REPORTING_MODEL.md), [Safety boundary](docs/SAFETY_BOUNDARY.md),
-[Applicability](docs/APPLICABILITY.md), [Chain of custody](docs/CHAIN_OF_CUSTODY.md),
-[Audit dossier](docs/AUDIT_DOSSIER.md), [Controlled validation](docs/CONTROLLED_VALIDATION.md),
-[Machine finding intake](docs/EVIDENCE_INTAKE.md),
-[Qualified finding review](docs/FINDING_REVIEW.md),
-[Reviewed report promotion](docs/REVIEWED_REPORT_PROMOTION.md),
-[Threat model](docs/THREAT_MODEL.md), and
-[Roadmap](docs/ROADMAP.md).
+system of record. Regulatory mappings do not establish legal applicability,
+certification, or compliance. A generated report remains an audit-support draft
+until it has been scoped, tested, evidenced, independently reviewed, and signed
+by authorized humans.
 
-## Reference baseline
+Key documentation:
 
-The design is informed by, but does not claim conformance with:
-
-- [BDDK Bankaların Bilgi Sistemleri ve Elektronik Bankacılık Hizmetleri Hakkında Yönetmelik](https://www.resmigazete.gov.tr/eskiler/2020/03/20200315-10.htm)
-- [BDDK Bilgi Sistemlerine İlişkin Sızma Testleri Hakkında Genelge 2012/1](https://www.bddk.org.tr/Mevzuat/DokumanGetir/915)
-- [SPK Bilgi Sistemleri Yönetimine İlişkin Usul ve Esaslar Tebliği VII-128.10](https://www.resmigazete.gov.tr/eskiler/2025/03/20250313-8.htm)
-- [KVKK 6698 sayılı Kanun Madde 12](https://www.kvkk.gov.tr/Icerik/2097/Kanun-doc) and [Personal Data Security Guide](https://www.kvkk.gov.tr/SharedFolderServer/CMSFiles/7512d0d4-f345-41cb-bc5b-8d5cf125e3a1.pdf)
-- [TSE Bilişim Teknolojileri Sızma Testleri](https://www.tse.org.tr/sizma-testleri/) and [TS 13638/T2 firm certification prerequisites](https://www.tse.org.tr/sizma-testi-belgelendirmesi/) (licensed standard required for clause-level implementation)
-- [ISO/IEC 27001:2022](https://www.iso.org/standard/27001) and [ISO/IEC 27002:2022](https://www.iso.org/standard/75652.html) (licensed text required for implementation)
-- [NIST SP 800-115 — Technical Guide to Information Security Testing and Assessment](https://csrc.nist.gov/pubs/sp/800/115/final)
-- [DORA, including Article 26 on threat-led penetration testing](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32022R2554)
-- [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
-- [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
-- [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
-- [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
-- [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)
+- [Safety boundary](docs/SAFETY_BOUNDARY.md)
+- [Threat model](docs/THREAT_MODEL.md)
+- [Controlled validation](docs/CONTROLLED_VALIDATION.md)
+- [Machine finding intake](docs/EVIDENCE_INTAKE.md)
+- [Qualified finding review](docs/FINDING_REVIEW.md)
+- [Reviewed report promotion](docs/REVIEWED_REPORT_PROMOTION.md)
+- [v0.6 Operator Workflow](docs/OPERATOR_WORKFLOW.md)
+- [Reporting model](docs/REPORTING_MODEL.md)
+- [Türkiye regulatory mapping](docs/TURKEY_REGULATORY_MAPPING.md)
+- [Applicability](docs/APPLICABILITY.md)
+- [Chain of custody](docs/CHAIN_OF_CUSTODY.md)
+- [Audit dossier](docs/AUDIT_DOSSIER.md)
+- [Roadmap](docs/ROADMAP.md)
 
 ## Contributing
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md). Contributions must preserve the
-closed catalog, safe-default and controlled-validation boundaries. Please report security issues through private
-vulnerability reporting as described in [SECURITY.md](SECURITY.md).
+closed catalog, safe-default execution model, human-approval boundaries, and
+controlled-validation limits. Security issues should be reported through the
+private vulnerability-reporting process described in [SECURITY.md](SECURITY.md).
 
 Apache-2.0 licensed. Copyright 2026 Bilge Kayalı.
