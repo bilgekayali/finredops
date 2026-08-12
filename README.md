@@ -5,7 +5,7 @@
 [![CI](https://github.com/bilgekayali/finredops/actions/workflows/ci.yml/badge.svg)](https://github.com/bilgekayali/finredops/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-68f5b5.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-c9ff67.svg)](pyproject.toml)
-[![Safety](https://img.shields.io/badge/runner-simulation--only-ffc764.svg)](docs/SAFETY_BOUNDARY.md)
+[![Safety](https://img.shields.io/badge/active-validation%20approval--gated-ffc764.svg)](docs/SAFETY_BOUNDARY.md)
 
 FinRedOps is an open-source control-plane prototype for teams that need to use
 AI in security-testing workflows without letting a model decide what may run.
@@ -13,11 +13,12 @@ The model proposes typed actions; deterministic policy enforces scope, time,
 separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> Version 0.3 remains deliberately **simulation-only**. It has no exploit engine,
-> target discovery, credential attacks, arbitrary shell, or network-capable
-> test runner. The included dashboard uses reserved `.test` names and synthetic
-> evidence. It is not a live penetration-testing engine, legal opinion,
-> regulatory acceptance decision, independent audit, or compliance certificate.
+> Version 0.4 keeps simulation as the safe default and adds one explicitly enabled,
+> non-production **controlled-validation** action. It makes one bounded TLS `HEAD`
+> request, follows no redirects, collects no response body and creates draft
+> findings for human review. It is not a general-purpose exploit framework,
+> autonomous penetration tester, legal opinion, regulatory acceptance decision,
+> independent audit, or compliance certificate.
 
 ## Why this project exists
 
@@ -31,8 +32,8 @@ boundaries visible in code.
 flowchart TD
     A["Human or AI plan"] --> B["Strict planning gateway"]
     B --> C["Deny-by-default policy"]
-    D["Scope + two-person approval"] --> C
-    C -->|allowed| E["Synthetic runner"]
+    D["Scope + role-separated approval"] --> C
+    C -->|allowed| E["Synthetic or bounded controlled runner"]
     C -->|denied| F["Recorded denial"]
     E --> G["Evidence receipt"]
     F --> H["Hash-chained audit"]
@@ -41,15 +42,16 @@ flowchart TD
 
 ## Control model
 
-| Boundary | v0.3 behavior |
+| Boundary | v0.4 behavior |
 |---|---|
 | AI authority | May propose JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
 | Action scope | Closed typed catalog; no free-form command field |
 | Engagement approval | Business owner + control team; distinct people |
-| Action approval | Control team + execution approver; distinct people |
+| Action approval | Passive: control team + execution approver; controlled: business owner + control team + execution approver; distinct people |
 | Approval integrity | Bound to SHA-256 digest and expiry time |
-| Execution | Bundled synthetic fixtures only; no network calls |
+| Execution | Simulation by default; optional one-request TLS `HEAD` validation on approved non-production targets |
+| Active boundary | No redirects, body collection, discovery, crawling, payloads, credentials, shell or production active tests |
 | Institution preflight | Blocks unsafe scope breadth, production risk, contact, rate, and TTL settings |
 | Evidence handling | Deterministically redacts likely secrets, e-mail, valid IBAN and payment-card identifiers |
 | Persistence | Append-only SQLite snapshot revisions plus exact audit-prefix verification |
@@ -60,6 +62,20 @@ flowchart TD
 | Delivery | Deterministic metadata-only ZIP with offline path, size, digest and embedded-document verification |
 | Kill switch | Control or execution approver can pause immediately |
 | Accountability | Append-only hash chain with offline verification |
+
+## Controlled validation in v0.4
+
+The first active module is intentionally narrow. `http.security_posture.validate`
+checks one approved HTTPS response for HSTS, CSP, MIME-sniffing protection,
+cookie attributes and certificate expiry. Findings are deterministic,
+evidence-linked and always marked for qualified human validation.
+
+The default demo still has no outbound target access. Enabling the network
+transport requires explicit code-level injection, a non-production engagement,
+an institution change/rules-of-engagement reference, three distinct proposal
+approvers, the configured rate ceiling and an available kill switch. See
+[Controlled active validation](docs/CONTROLLED_VALIDATION.md) for the exact
+methodology, limits and enablement contract.
 
 ## Run the visual demo
 
@@ -132,6 +148,7 @@ src/finredops/
   policy.py       deterministic, deny-by-default authorization
   catalog.py      closed catalog of typed actions
   runner.py       network-free synthetic evidence runner
+  validation.py   optional bounded active validation and draft finding normalizer
   evidence.py     sensitive-data minimization boundary
   custody.py      metadata-only evidence registry and custody hash chain
   audit.py        append-only SHA-256 hash chain
@@ -162,7 +179,8 @@ Mappings do not establish legal applicability, certification, or compliance.
 See [Türkiye regulatory profile](docs/TURKEY_REGULATORY_MAPPING.md),
 [Reporting model](docs/REPORTING_MODEL.md), [Safety boundary](docs/SAFETY_BOUNDARY.md),
 [Applicability](docs/APPLICABILITY.md), [Chain of custody](docs/CHAIN_OF_CUSTODY.md),
-[Audit dossier](docs/AUDIT_DOSSIER.md), [Threat model](docs/THREAT_MODEL.md), and
+[Audit dossier](docs/AUDIT_DOSSIER.md), [Controlled validation](docs/CONTROLLED_VALIDATION.md),
+[Threat model](docs/THREAT_MODEL.md), and
 [Roadmap](docs/ROADMAP.md).
 
 ## Reference baseline
@@ -185,7 +203,7 @@ The design is informed by, but does not claim conformance with:
 ## Contributing
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md). Contributions must preserve the
-simulation-only boundary. Please report security issues through private
+closed catalog, safe-default and controlled-validation boundaries. Please report security issues through private
 vulnerability reporting as described in [SECURITY.md](SECURITY.md).
 
 Apache-2.0 licensed. Copyright 2026 Bilge Kayalı.

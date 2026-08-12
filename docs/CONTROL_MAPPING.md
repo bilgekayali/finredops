@@ -15,6 +15,8 @@ and [reporting model](REPORTING_MODEL.md).
 | Control-team and owner separation | DORA/TLPT and TIBER-EU governance themes | digest-bound role approvals |
 | Controlled action authorization | Rules of engagement and risk management | `PolicyEngine.evaluate` |
 | Time window and stop condition | Test execution control and risk containment | window checks, emergency pause |
+| Bounded active observation | NIST SP 800-115 execution discipline; OWASP WSTG 4.2 HSTS and cookie objectives | one-request controlled validator and sanitized receipt |
+| Qualified human conclusion | TSE public personnel/firm requirements and report governance | draft findings plus mandatory human validation flag |
 | Evidence and reporting trail | Test documentation and traceability | receipt plus JSONL audit chain |
 | AI proposal treated as untrusted | NIST AI RMF govern/map/measure/manage themes | guarded planning gateway |
 | Known techniques represented as typed plans | MITRE ATT&CK emulation planning concept | closed action catalog (no techniques executed) |
@@ -22,6 +24,8 @@ and [reporting model](REPORTING_MODEL.md).
 Primary references:
 
 - [NIST SP 800-115](https://csrc.nist.gov/pubs/sp/800/115/final)
+- [TSE Bilişim Teknolojileri Sızma Testleri](https://www.tse.org.tr/sizma-testleri/)
+- [OWASP Web Security Testing Guide v4.2](https://owasp.org/www-project-web-security-testing-guide/v42/)
 - [DORA Regulation (EU) 2022/2554](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32022R2554)
 - [Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
 - [ECB TIBER-EU](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)

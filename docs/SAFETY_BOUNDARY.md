@@ -8,6 +8,11 @@
 - separation of requester, owner, control, approval, and operator roles;
 - closed evidence-review action catalog;
 - deterministic synthetic simulation;
+- explicitly enabled, non-production bounded validation using one TLS `HEAD`
+  request, no redirects and no response-body collection;
+- deterministic draft findings for HSTS, CSP, MIME-sniffing, cookie attributes
+  and certificate expiry, all requiring qualified human validation;
+- three-distinct-person approval and request-rate enforcement for controlled actions;
 - policy denials, emergency pause, evidence receipts, and audit verification;
 - institution-policy preflight and durable SQLite revisions;
 - deterministic redaction of likely secrets and regulated identifiers;
@@ -20,17 +25,19 @@
 
 ## Deliberately excluded
 
-- exploit generation or delivery;
+- exploit payload generation or delivery;
 - vulnerability payloads or proof-of-concept weaponization;
 - credential guessing, phishing, persistence, evasion, or lateral movement;
 - autonomous target discovery, port scanning, crawling, or fingerprinting;
 - arbitrary shell, script, SQL, URL, or model-generated tool execution;
-- collection from live systems or processing of real customer data;
+- response-body collection or processing of real customer data;
+- production active validation;
 - bypass instructions for authorization, monitoring, or safety controls.
 
 The planning schema has no command field. The policy recursively rejects common
-command-, payload-, and secret-bearing parameter names. The runner contains no
-network or process-execution API.
+command-, payload-, and secret-bearing parameter names. The simulation runner
+contains no network or process-execution API. The separately injected active
+runner contains one fixed TLS transport and no process-execution interface.
 
 Availability or resilience controls that could affect a service, including
 denial-of-service exercises, are evidence-only coordination records. Social
@@ -46,9 +53,11 @@ coordination, and tested stop procedures.
 
 ## Evidence statement
 
-Every built-in receipt is generated from a bundled fixture and includes
-`simulation: true` and a disclaimer. It must not be represented as a finding,
-assurance opinion, penetration-test result, or certification.
+Default-demo receipts are generated from bundled fixtures and include
+`simulation: true` and a disclaimer. Controlled receipts contain bounded response
+metadata and draft findings; they are not an assurance opinion, final
+penetration-test result or certification until a qualified human validates the
+scope, evidence, severity, impact and conclusion.
 
 Regulatory reports are audit-support drafts. BDDK/SPK applicability, TSE
 TS 13638/T2 scope and delivery deadlines require authorized human confirmation;

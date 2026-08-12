@@ -8,7 +8,7 @@
 - evidence integrity and audit continuity;
 - institution and customer data that must never enter this prototype.
 
-## Principal threats and v0.3 mitigations
+## Principal threats and v0.4 mitigations
 
 | Threat | Mitigation | Residual limitation |
 |---|---|---|
@@ -18,7 +18,11 @@
 | Requester self-approves | Role separation and distinct-actor rules | Demo identities are strings, not authenticated principals |
 | Stale approval is replayed | Subject digest and expiry checks | Durable replay ledger is future work |
 | Target escapes scope | Exact canonical hostname/IP/CIDR match; exclusions win | Asset ownership verification is external |
-| Unsupported action runs | Policy denies unsupported or controlled actions | Live adapters are intentionally absent |
+| Unsupported action runs | Policy denies unknown/reserved actions and requires explicit runner injection for the one controlled action | Institution-specific adapters remain external |
+| Active request escapes target | Exact scope, exclusions, one-time DNS resolution, unsafe-address denial, no redirects | Asset ownership and DNS control remain external |
+| Active validation affects service | One HEAD request, 1–5 second timeout, engagement rate ceiling, non-production restriction and kill-switch checks | Distributed stop propagation and service-side behavior remain external |
+| Response leaks sensitive data | No response body; cookie values and redirect locations are not persisted; peer address is digested | Headers can still contain unexpected sensitive values before minimization |
+| Operational failure becomes a false finding | Failure receipts carry safe codes and no vulnerability | Human reviewers must still assess incomplete coverage |
 | Activity continues during an incident | Emergency stop plus paused state | Distributed kill-switch propagation is future work |
 | Audit history is edited | Previous-hash chain and verifier | A privileged actor could replace the whole unanchored log |
 | Stored audit history is forked | SQLite accepts only an exact extension of the persisted prefix | External immutable anchoring is not yet implemented |
@@ -43,6 +47,8 @@ change violates the project boundary even if guarded by a prompt.
 ## Assumptions
 
 The demo runs locally, contains synthetic data, and is operated by a trusted
-developer. Its API is read-only but unauthenticated. It does not provide
+developer. The default demo remains simulation-only and its API is read-only but
+unauthenticated. Explicit active validation is limited to approved non-production
+targets. The project does not provide
 authenticated identities, multi-tenancy, high availability, institution-owned
 key management, evidence-vault controls, or regulatory record retention.

@@ -30,6 +30,7 @@ def _openapi_document() -> dict[str, Any]:
         "/api/v1/regulatory/profile": "Versioned Turkish regulatory crosswalk profile",
         "/api/v1/regulatory/applicability": "Human-confirmed applicability decisions",
         "/api/v1/evidence/manifest": "Metadata-only evidence custody manifest",
+        "/api/v1/execution/capabilities": "Configured execution capabilities",
         "/api/v1/audit-bundle/status": "Audit dossier readiness and verification status",
         "/api/v1/reporting/capabilities": "Supported report types and mandatory coverage",
         "/api/v1/audit/verification": "Audit-chain verification result",
@@ -124,6 +125,18 @@ def create_read_only_server(
             _json_bytes(assurance.get("evidence_manifest", {})),
             None,
         ),
+        "/api/v1/execution/capabilities": (
+            "application/json; charset=utf-8",
+            _json_bytes(
+                {
+                    "default_mode": "simulation",
+                    **dict(snapshot.get("execution_capabilities", {})),
+                    "network_enablement_via_read_only_api": False,
+                    "human_approval_required": True,
+                }
+            ),
+            None,
+        ),
         "/api/v1/audit-bundle/status": (
             "application/json; charset=utf-8",
             _json_bytes(assurance.get("audit_bundle", {})),
@@ -190,7 +203,7 @@ def create_read_only_server(
             body = _json_bytes(
                 {
                     "error": "method_not_allowed",
-                    "message": "The v0.3 demonstration API is deliberately read-only.",
+                    "message": "The v0.4 demonstration API is deliberately read-only.",
                 }
             )
             self.send_response(405)

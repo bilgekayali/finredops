@@ -7,7 +7,14 @@ from datetime import timedelta
 from finredops.models import ApprovalDecision, EngagementStatus, Role
 from finredops.policy import PolicyEngine
 
-from tests.helpers import NOW, make_approval, make_engagement, make_proposal, proposal_approvals
+from tests.helpers import (
+    NOW,
+    controlled_proposal_approvals,
+    make_approval,
+    make_engagement,
+    make_proposal,
+    proposal_approvals,
+)
 
 
 class PolicyTests(unittest.TestCase):
@@ -51,7 +58,64 @@ class PolicyTests(unittest.TestCase):
             self.engagement, proposal, proposal_approvals(proposal), now=NOW
         )
         self.assertFalse(decision.allowed)
-        self.assertIn("controlled or impacting", " ".join(decision.reasons))
+        self.assertIn("no approved v0.4 runner", " ".join(decision.reasons))
+
+    def test_bounded_controlled_action_requires_runner_and_three_roles(self) -> None:
+        proposal = make_proposal(
+            self.engagement,
+            action_id="http.security_posture.validate",
+            parameters={"change_reference": "CHG-SYNTH-001"},
+        )
+        without_owner = self.policy.evaluate(
+            self.engagement,
+            proposal,
+            proposal_approvals(proposal),
+            now=NOW,
+            controlled_runner_available=True,
+        )
+        self.assertFalse(without_owner.allowed)
+        self.assertIn("business_owner", " ".join(without_owner.reasons))
+
+        allowed = self.policy.evaluate(
+            self.engagement,
+            proposal,
+            controlled_proposal_approvals(proposal),
+            now=NOW,
+            controlled_runner_available=True,
+        )
+        self.assertTrue(allowed.allowed, allowed.reasons)
+
+    def test_controlled_action_rate_limit_and_parameters_fail_closed(self) -> None:
+        invalid = make_proposal(
+            self.engagement,
+            action_id="http.security_posture.validate",
+            parameters={"change_reference": "CHG-1", "path": "/../../admin"},
+        )
+        invalid_decision = self.policy.evaluate(
+            self.engagement,
+            invalid,
+            controlled_proposal_approvals(invalid),
+            now=NOW,
+            controlled_runner_available=True,
+        )
+        self.assertFalse(invalid_decision.allowed)
+        self.assertIn("Invalid controlled-validation", " ".join(invalid_decision.reasons))
+
+        proposal = make_proposal(
+            self.engagement,
+            action_id="http.security_posture.validate",
+            parameters={"change_reference": "CHG-2"},
+        )
+        limited = self.policy.evaluate(
+            self.engagement,
+            proposal,
+            controlled_proposal_approvals(proposal),
+            now=NOW,
+            controlled_runner_available=True,
+            requests_in_last_minute=self.engagement.max_requests_per_minute,
+        )
+        self.assertFalse(limited.allowed)
+        self.assertIn("rate ceiling", " ".join(limited.reasons))
 
     def test_command_bearing_parameter_is_denied(self) -> None:
         proposal = make_proposal(self.engagement, parameters={"shell": "anything"})

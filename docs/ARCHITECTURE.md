@@ -1,6 +1,7 @@
 # Architecture
 
-FinRedOps v0.3 is a small reference control plane, not a scanner. Its central
+FinRedOps v0.4 is a small reference control plane with one bounded active
+validation primitive, not a general-purpose scanner. Its central
 design choice is to separate probabilistic planning from deterministic
 authorization and execution.
 
@@ -19,26 +20,30 @@ authorization and execution.
    role-separation, self-approval, expiry, denial, and kill-switch checks.
 5. **Simulation runner** reads a bundled fixture. It does not resolve DNS, open
    sockets, spawn processes, or interpret model text.
-6. **Audit chain** links canonicalized events with SHA-256 so offline
+6. **Controlled-validation runner** is absent by default. When explicitly
+   injected, it performs one TLS `HEAD` request to one approved non-production
+   target, follows no redirect, collects no body and emits draft findings.
+7. **Audit chain** links canonicalized events with SHA-256 so offline
    verification can identify alteration or removal inside the chain.
-7. **Dashboard** renders a snapshot locally and labels all evidence synthetic.
-8. **Institution profile** blocks unsafe scope, risk, contact, rate, and approval
+8. **Dashboard** renders a snapshot locally and distinguishes simulated,
+   validated, failed and cancelled execution receipts.
+9. **Institution profile** blocks unsafe scope, risk, contact, rate, and approval
    settings before an engagement can be activated.
-9. **Evidence guard** minimizes likely secrets, e-mail addresses, valid IBANs,
+10. **Evidence guard** minimizes likely secrets, e-mail addresses, valid IBANs,
    and payment-card identifiers before receipts become immutable.
-10. **SQLite store** persists append-only snapshot revisions and refuses audit
+11. **SQLite store** persists append-only snapshot revisions and refuses audit
     histories that diverge from the exact stored prefix.
-11. **Regulatory/report engine** records source-linked control conclusions,
+12. **Regulatory/report engine** records source-linked control conclusions,
     mandatory test coverage, finding ownership, remediation, and human sign-off.
-12. **Read-only API** exposes synthetic state over GET/HEAD only on loopback by
+13. **Read-only API** exposes state over GET/HEAD only on loopback by
     default; no state-changing endpoint exists.
-13. **Applicability engine** records human-confirmed BDDK, SPK, KVKK, TSE and
+14. **Applicability engine** records human-confirmed BDDK, SPK, KVKK, TSE and
     ISO scope decisions without inferring legal applicability from an entity label.
-14. **Evidence custody registry** binds opaque evidence locators to content
+15. **Evidence custody registry** binds opaque evidence locators to content
     digests, custodians, retention metadata and a separate hash chain.
-15. **Report delta engine** makes new, missing, closed, reopened and severity or
+16. **Report delta engine** makes new, missing, closed, reopened and severity or
     control changes explicit between report revisions.
-16. **Audit dossier builder** creates a deterministic metadata-only ZIP and
+17. **Audit dossier builder** creates a deterministic metadata-only ZIP and
     verifies paths, sizes, digests and embedded documents without extraction.
 
 ## Trust boundaries
@@ -54,13 +59,16 @@ flowchart LR
     end
     subgraph S["Constrained execution zone"]
       X["Synthetic runner"]
+      V["Optional bounded validator"]
     end
     A --> B
     P --> X
+    P --> V
 ```
 
 Model output is untrusted data throughout. It never becomes executable text.
-The v0.3 execution zone contains no live adapter.
+The v0.4 active path accepts only typed scalar parameters and remains disabled
+unless an integrator injects the bounded runner.
 
 ## State and persistence
 
@@ -77,7 +85,9 @@ retention/legal-hold policy, backups, recovery and external audit anchoring.
 flowchart TD
     E["Approved engagement"] --> P["Institution preflight"]
     P --> A["Synthetic evidence receipt"]
+    P --> V["Optional controlled receipt + draft findings"]
     A --> G["Evidence guard"]
+    V --> G
     G --> S["SQLite + hash audit"]
     S --> M["Evidence manifest"]
     M --> R["Audit-support report"]
@@ -86,9 +96,10 @@ flowchart TD
     R --> H["Audit dossier + human review"]
 ```
 
-## Proposed future live boundary
+## Future active boundary
 
-Live passive collection, if ever implemented, should be a separate signed
-runner with short-lived workload identity, outbound allowlisting, isolated
-workers, an institution-owned policy decision point, and no arbitrary-command
-interface. It is intentionally absent from v0.3.
+Additional live modules should be separate signed workers with short-lived
+workload identity, outbound allowlisting, isolated execution, an
+institution-owned policy decision point, and no arbitrary-command interface.
+Production testing, authentication flows and invasive validation remain absent
+from v0.4 and require independent threat, legal and control review.

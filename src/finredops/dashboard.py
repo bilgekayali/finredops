@@ -37,10 +37,29 @@ def render_dashboard(snapshot: Mapping[str, Any]) -> str:
         int(receipt.get("evidence", {}).get("data_guard", {}).get("finding_count", 0))
         for receipt in receipts.values()
     )
-    simulated = len(receipts)
+    simulated = sum(
+        1 for receipt in receipts.values() if receipt.get("status") == "simulated"
+    )
+    validated = sum(
+        1 for receipt in receipts.values() if receipt.get("status") == "validated"
+    )
     denied = sum(1 for decision in decisions.values() if not decision["allowed"])
     allowed = sum(1 for decision in decisions.values() if decision["allowed"])
-    coverage = min(100, round((len(approvals) / max(1, 2 + len(proposals) * 2)) * 100))
+    proposal_role_count = sum(
+        3
+        if ACTION_CATALOG[item["action_id"]].risk_level.value == "controlled"
+        else 2
+        for item in proposals
+    )
+    coverage = min(100, round((len(approvals) / max(1, 2 + proposal_role_count)) * 100))
+    controlled_enabled = bool(
+        snapshot.get("execution_capabilities", {}).get("controlled_validation")
+    )
+    boundary = (
+        "● CONTROLLED VALIDATION ENABLED<br>Non-production · one bounded request"
+        if controlled_enabled
+        else "● SIMULATION-ONLY DEFAULT<br>No outbound target access"
+    )
     applicability_state = (
         "AUDIT READY" if applicability.get("ready_for_audit") else "NEEDS REVIEW"
     )
@@ -78,7 +97,8 @@ def render_dashboard(snapshot: Mapping[str, Any]) -> str:
         decision = decisions.get(proposal_id)
         receipt = receipts.get(proposal_id)
         if receipt:
-            state, state_class = "SIMULATED", "ok"
+            state = _safe(str(receipt.get("status", "completed"))).upper()
+            state_class = "deny" if receipt.get("status") == "failed" else "ok"
             evidence = _short(receipt["evidence_digest"])
         elif decision and not decision["allowed"]:
             state, state_class = "DENIED", "deny"
@@ -126,12 +146,12 @@ def render_dashboard(snapshot: Mapping[str, Any]) -> str:
 </head>
 <body>
 <div class="shell">
-  <aside class="side"><div class="brand">Fin<b>RedOps</b></div><div class="version">ASSURANCE CONTROL PLANE · v0.3</div><div class="nav"><span class="active">Operations</span><span>Engagements</span><span>Approvals</span><span>Evidence</span><span>Regulatory reports</span><span>Audit chain</span></div><div class="boundary">● SIMULATION-ONLY RUNNER<br>No network or shell capability</div></aside>
+  <aside class="side"><div class="brand">Fin<b>RedOps</b></div><div class="version">ASSURANCE CONTROL PLANE · v0.4</div><div class="nav"><span class="active">Operations</span><span>Engagements</span><span>Approvals</span><span>Evidence</span><span>Regulatory reports</span><span>Audit chain</span></div><div class="boundary">__BOUNDARY__</div></aside>
   <main class="main">
     <header class="top"><div><div class="eyebrow">Governed security validation</div><h1>__NAME__</h1><div class="sub">__ENGAGEMENT_ID__ · digest __DIGEST__</div></div><div class="status">● __PREFLIGHT__ · __STATUS__</div></header>
-    <section class="grid metrics"><div class="metric"><p>Approved scope</p><strong>__ASSETS__</strong><em>exact assets</em></div><div class="metric"><p>Proposed actions</p><strong>__PROPOSALS__</strong><em>closed catalog</em></div><div class="metric"><p>Simulated safely</p><strong>__SIMULATED__</strong><em>zero network calls</em></div><div class="metric"><p>Policy denials</p><strong>__DENIED__</strong><em>fail closed</em></div></section>
+    <section class="grid metrics"><div class="metric"><p>Approved scope</p><strong>__ASSETS__</strong><em>exact assets</em></div><div class="metric"><p>Proposed actions</p><strong>__PROPOSALS__</strong><em>closed catalog</em></div><div class="metric"><p>Completed safely</p><strong>__COMPLETED__</strong><em>__EXECUTION_MIX__</em></div><div class="metric"><p>Policy denials</p><strong>__DENIED__</strong><em>fail closed</em></div></section>
     <section class="assurance-strip"><div><span>Institution profile</span><b>__POLICY_PROFILE__</b></div><div><span>Regulatory profile</span><b>__REG_CONTROLS__ CONTROLS · __REG_PROFILE__</b></div><div><span>Applicability</span><b>__APPLICABILITY__</b></div><div><span>Evidence custody</span><b>__EVIDENCE_MANIFEST__</b></div><div><span>Audit dossier</span><b>__DOSSIER__</b></div></section>
-    <section class="grid two"><article class="panel"><div class="panel-head"><h2>Scope lock</h2><span>Allowlist + explicit exclusions</span></div>__SCOPE__<div class="exclusions">__EXCLUSIONS__</div></article><article class="panel"><div class="panel-head"><h2>Approval integrity</h2><span>Digest-bound and time-limited</span></div><strong>__COVERAGE__% control coverage</strong><div class="gauge"><b></b></div><div class="approval-list"><div>Engagement separation <b>2 roles</b></div><div>Proposal separation <b>2 roles / action</b></div><div>Authorized decisions <b>__ALLOWED__</b></div><div>Emergency stop <b>READY</b></div></div></article></section>
+    <section class="grid two"><article class="panel"><div class="panel-head"><h2>Scope lock</h2><span>Allowlist + explicit exclusions</span></div>__SCOPE__<div class="exclusions">__EXCLUSIONS__</div></article><article class="panel"><div class="panel-head"><h2>Approval integrity</h2><span>Digest-bound and time-limited</span></div><strong>__COVERAGE__% control coverage</strong><div class="gauge"><b></b></div><div class="approval-list"><div>Engagement separation <b>2 roles</b></div><div>Proposal separation <b>2–3 roles / action</b></div><div>Authorized decisions <b>__ALLOWED__</b></div><div>Emergency stop <b>READY</b></div></div></article></section>
     <section class="panel"><div class="panel-head"><h2>Action control queue</h2><span>Every decision is visible and attributable</span></div><div class="table-wrap"><table><thead><tr><th>Catalog action</th><th>Exact target</th><th>Risk</th><th>Decision</th><th>Evidence hash</th></tr></thead><tbody>__ACTION_ROWS__</tbody></table></div></section>
     <section class="grid lower"><article class="panel"><div class="panel-head"><h2>Tamper-evident audit trail</h2><span>SHA-256 hash chain · __EVENTS__ events</span></div><ol class="timeline">__EVENT_ROWS__</ol></article><article class="panel"><div class="panel-head"><h2>Türkiye regulatory assurance</h2><span>Source-linked mapping, not certification</span></div><div class="controls"><div class="control"><b>BDDK · __BDDK__</b><span>BSEBY + 2012/1 scope</span></div><div class="control"><b>SPK · __SPK__</b><span>Current VII-128.10</span></div><div class="control"><b>KVKK · __KVKK__</b><span>Article 12 + security guide</span></div><div class="control"><b>TSE · __TSE__</b><span>TS 13638/T2 + current scope</span></div><div class="control"><b>ISO/IEC · __ISO__</b><span>27001:2022 mapped objectives</span></div></div></article></section>
     <p class="foot">Synthetic audit-support demonstration · legal/compliance sign-off and licensed TSE/ISO text remain mandatory</p>
@@ -140,6 +160,7 @@ def render_dashboard(snapshot: Mapping[str, Any]) -> str:
 </body></html>"""
     replacements = {
         "__COVERAGE__": str(coverage),
+        "__BOUNDARY__": boundary,
         "__NAME__": _safe(engagement["name"]),
         "__ENGAGEMENT_ID__": _safe(engagement["engagement_id"]),
         "__DIGEST__": _short(snapshot["engagement_digest"], 14),
@@ -159,7 +180,8 @@ def render_dashboard(snapshot: Mapping[str, Any]) -> str:
         "__ISO__": str(authority_counts.get("ISO/IEC", 0)),
         "__ASSETS__": str(len(engagement["assets"])),
         "__PROPOSALS__": str(len(proposals)),
-        "__SIMULATED__": str(simulated),
+        "__COMPLETED__": str(simulated + validated),
+        "__EXECUTION_MIX__": f"{simulated} simulated · {validated} active",
         "__DENIED__": str(denied),
         "__SCOPE__": scope_cards,
         "__EXCLUSIONS__": excluded_cards,

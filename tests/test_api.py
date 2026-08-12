@@ -60,6 +60,13 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(capabilities["human_issue_approval_required"])
         self.assertTrue(capabilities["report_delta_supported"])
 
+    def test_execution_capabilities_are_read_only_and_default_safe(self) -> None:
+        with urlopen(self.base + "/api/v1/execution/capabilities", timeout=2) as response:
+            capabilities = json.load(response)
+        self.assertEqual(capabilities["default_mode"], "simulation")
+        self.assertFalse(capabilities["controlled_validation"])
+        self.assertFalse(capabilities["network_enablement_via_read_only_api"])
+
     def test_applicability_and_evidence_metadata_are_exposed(self) -> None:
         with urlopen(self.base + "/api/v1/regulatory/applicability", timeout=2) as response:
             applicability = json.load(response)

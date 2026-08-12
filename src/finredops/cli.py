@@ -36,7 +36,7 @@ from .models import parse_datetime, utc_now
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="finredops",
-        description="Governance-first, simulation-only security testing orchestration.",
+        description="Governance-first simulation and approval-gated controlled validation.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     demo = subparsers.add_parser("demo", help="Generate a synthetic dashboard and audit trail.")
@@ -44,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify = subparsers.add_parser("verify-audit", help="Verify a generated audit hash chain.")
     verify.add_argument("path", type=Path)
     verify_bundle = subparsers.add_parser(
-        "verify-bundle", help="Verify a v0.3 audit dossier without extracting it."
+        "verify-bundle", help="Verify an audit dossier without extracting it."
     )
     verify_bundle.add_argument("path", type=Path)
     serve = subparsers.add_parser("serve", help="Serve the synthetic dashboard locally.")

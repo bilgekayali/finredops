@@ -4,6 +4,32 @@ All notable changes to FinRedOps are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-12
+
+### Added
+
+- Explicitly enabled controlled-validation runner for one bounded TLS `HEAD`
+  request to one approved non-production target.
+- Deterministic HSTS, CSP, MIME-sniffing, cookie-attribute and certificate-expiry
+  observations normalized into human-review draft findings.
+- Three-person proposal approval for controlled actions: business owner, control
+  team and execution approver, all digest-bound and distinct.
+- Request-rate enforcement, pre/post-request kill-switch checks, safe operational
+  failure receipts and draft-report finding conversion.
+- Read-only execution-capability endpoint and dashboard states for simulation,
+  active validation, failure and cancellation.
+
+### Security
+
+- The default service and demo remain simulation-only; network access requires
+  explicit construction and injection of the controlled runner.
+- The active transport resolves once, rejects unsafe address classes, requires
+  TLS 1.2+, follows no redirects, collects no response body and caps headers,
+  timeout and requests.
+- Production active validation, exploit payloads, credential attacks, arbitrary
+  commands, target discovery, crawling, port scanning and attack chaining remain
+  absent.
+
 ## [0.3.0] - 2026-08-12
 
 ### Added
