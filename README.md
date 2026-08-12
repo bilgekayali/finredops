@@ -57,6 +57,53 @@ flowchart TD
     L --> M["Validated draft report"]
 ```
 
+## Regulatory & security assurance coverage
+
+FinRedOps analyzes security evidence and draft assurance conclusions against a
+combination of **implemented financial-sector regulatory/control mappings** and
+**international security-testing, privacy, operational-resilience and AI-risk
+baselines**. Framework names are not decorative report labels: where structured
+support exists, findings can be linked to control identifiers, applicability,
+evidence and human-reviewed conclusions.
+
+| Framework / authority | How FinRedOps uses it today |
+|---|---|
+| **BDDK** | Implemented Turkish banking regulatory crosswalk/applicability and penetration-testing assurance context |
+| **SPK VII-128.10** | Implemented capital-markets information-systems crosswalk/applicability |
+| **KVKK 6698** | Implemented personal-data security crosswalk/applicability and evidence-minimization context |
+| **TSE / TS 13638/T2** | Public penetration-testing prerequisites and licensed-clause evidence boundary |
+| **ISO/IEC 27001:2022 & 27002:2022** | ISMS/control applicability and control-oriented assurance mapping; no certification claim |
+| **NIST SP 800-115** | Technical security-testing and assessment methodology baseline |
+| **OWASP ASVS 5.0** | Application-security verification baseline and finding/control tagging; deeper versioned requirement coverage is on the roadmap |
+| **GDPR — Regulation (EU) 2016/679** | EU privacy/security, minimization and evidence-handling analysis baseline; no clause-level compliance claim |
+| **DORA — Regulation (EU) 2022/2554** | Financial-sector ICT risk, operational-resilience and TLPT analysis baseline |
+| **TIBER-EU** | Intelligence-led testing governance and human-accountability baseline |
+| **NIST AI RMF** | AI-assisted workflow governance, traceability and human-oversight baseline |
+| **MITRE ATT&CK** | Adversary-behavior and controlled-emulation planning reference |
+| **OASIS SARIF 2.1.0** | Implemented bounded machine-finding intake and canonical review queue |
+
+The intended assurance chain is:
+
+```text
+security evidence
+    -> bounded normalization
+    -> qualified human disposition
+    -> technical + business impact
+    -> regulatory / standard / requirement references
+    -> human-confirmed applicability
+    -> draft assurance conclusion
+    -> independent human approval
+```
+
+This does **not** mean FinRedOps certifies compliance with BDDK, SPK, KVKK,
+GDPR, DORA, TSE or ISO requirements. It provides structured analysis,
+traceability and audit-support evidence while keeping legal applicability,
+regulatory acceptance, certification and final approval with authorized humans.
+
+See **[Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)**
+for the detailed coverage matrix, implementation status and official reference
+sources.
+
 ## Core control model
 
 | Boundary | v0.6.1 behavior |
@@ -71,6 +118,7 @@ flowchart TD
 | Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
 | Finding disposition | Qualified-tester decision with evidence, final severity, impact, recommendation, and control mapping |
 | Risk acceptance | Separate business risk owner with compensating controls and expiry |
+| Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
 | Operator workflow | One CLI surface for legacy commands, report-spec templates, promotion, and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
@@ -225,8 +273,9 @@ python -m finredops serve --host 127.0.0.1 --port 8080
 
 The demo includes a synthetic engagement, digest-bound approvals, policy
 decisions, evidence receipts, an intentional denial, an operations dashboard,
-SQLite persistence, regulatory crosswalks, evidence custody, and an offline
-review dossier.
+SQLite persistence, a BDDK/SPK/KVKK/TSE/ISO regulatory crosswalk, international
+security/resilience analysis baselines, evidence custody, and an offline review
+dossier.
 
 ## Repository map
 
@@ -277,8 +326,29 @@ supplied manifest; it does not establish build origin. GitHub/Sigstore artifact
 attestations address build provenance only when the consumer verifies them.
 Neither mechanism authenticates reviewers or report approvers.
 
+## Reference baseline
+
+The design and analysis model are informed by, but do not claim conformance with:
+
+- [BDDK Bankaların Bilgi Sistemleri ve Elektronik Bankacılık Hizmetleri Hakkında Yönetmelik](https://www.resmigazete.gov.tr/eskiler/2020/03/20200315-10.htm)
+- [BDDK Bilgi Sistemlerine İlişkin Sızma Testleri Hakkında Genelge 2012/1](https://www.bddk.org.tr/Mevzuat/DokumanGetir/915)
+- [SPK Bilgi Sistemleri Yönetimine İlişkin Usul ve Esaslar Tebliği VII-128.10](https://www.resmigazete.gov.tr/eskiler/2025/03/20250313-8.htm)
+- [KVKK 6698 sayılı Kanun Madde 12](https://www.kvkk.gov.tr/Icerik/2097/Kanun-doc) and [Personal Data Security Guide](https://www.kvkk.gov.tr/SharedFolderServer/CMSFiles/7512d0d4-f345-41cb-bc5b-8d5cf125e3a1.pdf)
+- [TSE Bilişim Teknolojileri Sızma Testleri](https://www.tse.org.tr/sizma-testleri/) and [TS 13638/T2 firm certification prerequisites](https://www.tse.org.tr/sizma-testi-belgelendirmesi/)
+- [ISO/IEC 27001:2022](https://www.iso.org/standard/27001) and [ISO/IEC 27002:2022](https://www.iso.org/standard/75652.html)
+- [NIST SP 800-115 — Technical Guide to Information Security Testing and Assessment](https://csrc.nist.gov/pubs/sp/800/115/final)
+- [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+- [GDPR — Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
+- [DORA — Regulation (EU) 2022/2554](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)
+- [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
+- [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
+- [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
+- [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)
+
 Key documentation:
 
+- [Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)
