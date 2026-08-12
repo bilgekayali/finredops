@@ -4,6 +4,31 @@ All notable changes to FinRedOps are documented here.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-12
+
+### Added
+
+- Digest-bound qualified-tester decisions for confirmed, false-positive,
+  duplicate and not-applicable machine-finding candidates.
+- Final human severity with mandatory rationale for machine-severity overrides,
+  opaque validation evidence and assessment-applicable control mapping for
+  confirmed findings.
+- Separate business-risk-owner acceptance bound to the exact confirmed review,
+  with approval evidence, compensating controls and 1–366 day expiry.
+- Deterministic review queue summary, strict validation commands, JSON schemas,
+  end-to-end CLI workflow and focused integrity tests.
+
+### Security
+
+- Machine candidates remain immutable and cannot become report findings or
+  regulatory conclusions through this workflow.
+- Non-confirmed decisions cannot carry report conclusions; duplicates must point
+  directly to a confirmed primary candidate.
+- Tester and risk owner must differ, expired acceptance returns to confirmed
+  state, and every decision document is intake- and content-digest bound.
+- Identity, qualification and approval claims are not cryptographically signed;
+  institution-owned IAM, PKI, trusted time and immutable storage remain required.
+
 ## [0.5.0] - 2026-08-12
 
 ### Added

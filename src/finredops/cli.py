@@ -14,7 +14,12 @@ from .bundle import BundlePurpose, build_audit_bundle, verify_audit_bundle
 from .custody import EvidenceManifest
 from .demo import build_demo_assurance_snapshot, build_demo_service, write_demo
 from .diffing import compare_reports
-from .intake import SarifIntakeError, import_sarif_file, read_intake_file
+from .intake import (
+    EvidenceIntakeBatch,
+    SarifIntakeError,
+    import_sarif_file,
+    read_intake_file,
+)
 from .planner import GuardedPlanningGateway, PlanValidationError
 from .profiles import regulated_financial_profile
 from .regulations import AssessmentType
@@ -24,6 +29,20 @@ from .reporting import (
     report_from_document,
     report_template_document,
     validate_report,
+)
+from .review import (
+    QualifiedFindingReview,
+    ReviewDocumentError,
+    RiskAcceptance,
+    build_review_summary,
+    read_review_json,
+    review_from_document,
+    review_from_draft,
+    review_summary_from_document,
+    review_template_document,
+    risk_acceptance_from_document,
+    risk_acceptance_from_draft,
+    risk_acceptance_template_document,
 )
 from .serialization import (
     DocumentValidationError,
@@ -123,6 +142,79 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify a canonical finding-intake document and its digest.",
     )
     validate_intake.add_argument("path", type=Path)
+    review_template = subparsers.add_parser(
+        "finding-review-template",
+        help="Create a qualified-tester review draft for one intake candidate.",
+    )
+    review_template.add_argument("--intake", type=Path, required=True)
+    review_template.add_argument("--finding-id", required=True)
+    review_template.add_argument(
+        "--assessment-type",
+        choices=[item.value for item in AssessmentType],
+        required=True,
+    )
+    review_template.add_argument("--output", type=Path, required=True)
+    finalize_review = subparsers.add_parser(
+        "finalize-finding-review",
+        help="Bind and digest a completed qualified-tester review draft.",
+    )
+    finalize_review.add_argument("--intake", type=Path, required=True)
+    finalize_review.add_argument("--draft", type=Path, required=True)
+    finalize_review.add_argument("--output", type=Path, required=True)
+    validate_review_command = subparsers.add_parser(
+        "validate-finding-review",
+        help="Verify a digest-bound finding review against its intake batch.",
+    )
+    validate_review_command.add_argument("--intake", type=Path, required=True)
+    validate_review_command.add_argument("--review", type=Path, required=True)
+    acceptance_template = subparsers.add_parser(
+        "risk-acceptance-template",
+        help="Create a business-risk-owner draft for one confirmed review.",
+    )
+    acceptance_template.add_argument("--intake", type=Path, required=True)
+    acceptance_template.add_argument("--review", type=Path, required=True)
+    acceptance_template.add_argument("--output", type=Path, required=True)
+    finalize_acceptance = subparsers.add_parser(
+        "finalize-risk-acceptance",
+        help="Bind and digest a completed risk-acceptance draft.",
+    )
+    finalize_acceptance.add_argument("--intake", type=Path, required=True)
+    finalize_acceptance.add_argument("--review", type=Path, required=True)
+    finalize_acceptance.add_argument("--draft", type=Path, required=True)
+    finalize_acceptance.add_argument("--output", type=Path, required=True)
+    validate_acceptance = subparsers.add_parser(
+        "validate-risk-acceptance",
+        help="Verify role-separated acceptance of one confirmed finding.",
+    )
+    validate_acceptance.add_argument("--intake", type=Path, required=True)
+    validate_acceptance.add_argument("--review", type=Path, required=True)
+    validate_acceptance.add_argument("--acceptance", type=Path, required=True)
+    review_summary = subparsers.add_parser(
+        "build-review-summary",
+        help="Build a deterministic status summary for an intake review queue.",
+    )
+    review_summary.add_argument("--intake", type=Path, required=True)
+    review_summary.add_argument(
+        "--assessment-type",
+        choices=[item.value for item in AssessmentType],
+        required=True,
+    )
+    review_summary.add_argument("--review", type=Path, action="append", default=[])
+    review_summary.add_argument(
+        "--acceptance", type=Path, action="append", default=[]
+    )
+    review_summary.add_argument("--as-of", required=True)
+    review_summary.add_argument("--output", type=Path, required=True)
+    validate_summary = subparsers.add_parser(
+        "validate-review-summary",
+        help="Verify a finding-review summary against its intake batch.",
+    )
+    validate_summary.add_argument("--intake", type=Path, required=True)
+    validate_summary.add_argument("--summary", type=Path, required=True)
+    validate_summary.add_argument("--review", type=Path, action="append", default=[])
+    validate_summary.add_argument(
+        "--acceptance", type=Path, action="append", default=[]
+    )
     return parser
 
 
@@ -321,7 +413,9 @@ def entrypoint(argv: list[str] | None = None) -> int:
     if args.command == "import-sarif":
         try:
             if args.path.resolve() == args.output.resolve():
-                raise SarifIntakeError("SARIF source and canonical output must be different files.")
+                raise SarifIntakeError(
+                    "SARIF source and canonical output must be different files."
+                )
             batch = import_sarif_file(args.path)
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(
@@ -348,4 +442,188 @@ def entrypoint(argv: list[str] | None = None) -> int:
             "human-review candidates and no embedded raw source."
         )
         return 0
+    if args.command == "finding-review-template":
+        try:
+            batch = read_intake_file(args.intake)
+            _refuse_source_overwrite(args.output, args.intake)
+            _write_json(
+                args.output,
+                review_template_document(
+                    batch,
+                    args.finding_id,
+                    AssessmentType(args.assessment_type),
+                ),
+            )
+        except (OSError, SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(f"Review draft: {args.output}")
+        return 0
+    if args.command == "finalize-finding-review":
+        try:
+            batch = read_intake_file(args.intake)
+            _refuse_source_overwrite(args.output, args.intake, args.draft)
+            review = review_from_draft(read_review_json(args.draft), batch)
+            _write_json(args.output, review.as_dict())
+        except (OSError, SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(f"Finalized review: {args.output} ({review.review_id})")
+        return 0
+    if args.command == "validate-finding-review":
+        try:
+            batch = read_intake_file(args.intake)
+            review = review_from_document(read_review_json(args.review), batch)
+        except (SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(
+            f"VALID: {review.review_id} records {review.disposition.value} "
+            f"for {review.finding_id}."
+        )
+        return 0
+    if args.command == "risk-acceptance-template":
+        try:
+            batch = read_intake_file(args.intake)
+            review = review_from_document(read_review_json(args.review), batch)
+            _refuse_source_overwrite(args.output, args.intake, args.review)
+            _write_json(args.output, risk_acceptance_template_document(review))
+        except (OSError, SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(f"Risk-acceptance draft: {args.output}")
+        return 0
+    if args.command == "finalize-risk-acceptance":
+        try:
+            batch = read_intake_file(args.intake)
+            review = review_from_document(read_review_json(args.review), batch)
+            _refuse_source_overwrite(
+                args.output, args.intake, args.review, args.draft
+            )
+            acceptance = risk_acceptance_from_draft(
+                read_review_json(args.draft), batch, review
+            )
+            _write_json(args.output, acceptance.as_dict())
+        except (OSError, SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(
+            f"Finalized risk acceptance: {args.output} "
+            f"({acceptance.acceptance_id})"
+        )
+        return 0
+    if args.command == "validate-risk-acceptance":
+        try:
+            batch = read_intake_file(args.intake)
+            review = review_from_document(read_review_json(args.review), batch)
+            acceptance = risk_acceptance_from_document(
+                read_review_json(args.acceptance), batch, review
+            )
+        except (SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(
+            f"VALID: {acceptance.acceptance_id} accepts risk for "
+            f"{acceptance.finding_id} until {acceptance.expires_on}."
+        )
+        return 0
+    if args.command == "build-review-summary":
+        try:
+            batch = read_intake_file(args.intake)
+            _refuse_source_overwrite(
+                args.output, args.intake, *args.review, *args.acceptance
+            )
+            reviews, acceptances = _load_review_records(
+                batch, args.review, args.acceptance
+            )
+            summary = build_review_summary(
+                batch,
+                reviews,
+                acceptances,
+                assessment_type=AssessmentType(args.assessment_type),
+                as_of=parse_datetime(args.as_of),
+            )
+            _write_json(args.output, summary.as_dict())
+        except (OSError, SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(
+            f"Review summary: {args.output} "
+            f"({summary.reviewed_count}/{summary.candidate_count} reviewed)"
+        )
+        return 0
+    if args.command == "validate-review-summary":
+        try:
+            batch = read_intake_file(args.intake)
+            summary = review_summary_from_document(
+                read_review_json(args.summary), batch
+            )
+            reviews, acceptances = _load_review_records(
+                batch, args.review, args.acceptance
+            )
+            reconstructed = build_review_summary(
+                batch,
+                reviews,
+                acceptances,
+                assessment_type=summary.assessment_type,
+                as_of=summary.as_of,
+            )
+            if reconstructed.as_dict() != summary.as_dict():
+                raise ReviewDocumentError(
+                    "Review summary does not match the supplied decision records."
+                )
+        except (SarifIntakeError, ReviewDocumentError, ValueError) as exc:
+            print(f"INVALID: {exc}")
+            return 1
+        print(
+            f"VALID: review summary covers {summary.candidate_count} candidates "
+            f"with {summary.pending_count} pending."
+        )
+        return 0
     return 2
+
+
+def _write_json(path: Path, document: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8") as destination:
+        destination.write(json.dumps(document, ensure_ascii=False, indent=2) + "\n")
+
+
+def _refuse_source_overwrite(output: Path, *inputs: Path) -> None:
+    output_path = output.resolve()
+    if any(output_path == source.resolve() for source in inputs):
+        raise ReviewDocumentError("Output must not overwrite an intake or decision input.")
+
+
+def _load_review_records(
+    batch: EvidenceIntakeBatch,
+    review_paths: list[Path],
+    acceptance_paths: list[Path],
+) -> tuple[tuple[QualifiedFindingReview, ...], tuple[RiskAcceptance, ...]]:
+    reviews = tuple(
+        review_from_document(read_review_json(path), batch)
+        for path in review_paths
+    )
+    review_by_finding = {review.finding_id: review for review in reviews}
+    if len(review_by_finding) != len(reviews):
+        raise ReviewDocumentError(
+            "More than one review was supplied for the same finding."
+        )
+    acceptances = []
+    for path in acceptance_paths:
+        document = read_review_json(path)
+        if not isinstance(document, dict) or not isinstance(
+            document.get("finding_id"), str
+        ):
+            raise ReviewDocumentError(
+                "Risk acceptance must identify its reviewed finding."
+            )
+        review = review_by_finding.get(document["finding_id"])
+        if review is None:
+            raise ReviewDocumentError(
+                "Every risk acceptance requires its matching review input."
+            )
+        acceptances.append(
+            risk_acceptance_from_document(document, batch, review)
+        )
+    return reviews, tuple(acceptances)

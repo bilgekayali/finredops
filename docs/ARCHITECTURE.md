@@ -49,6 +49,13 @@ authorization and execution.
 18. **Finding intake** treats SARIF 2.1.0 as untrusted evidence, applies bounded
     parsing, minimizes sensitive text, normalizes safe locations, correlates
     stable fingerprints and emits only human-review candidates.
+19. **Qualified review** binds one tester decision to the exact intake and
+    candidate digest and assessment type, separates final human severity from
+    machine severity and records evidence-linked false-positive, duplicate and
+    applicability outcomes.
+20. **Risk disposition** keeps time-bounded business-owner risk acceptance
+    separate from the tester and exposes active or expired state in a
+    deterministic queue summary without report promotion.
 
 ## Trust boundaries
 
@@ -68,9 +75,13 @@ flowchart LR
     subgraph I["Untrusted evidence intake"]
       F["Bounded SARIF parser"] --> Q["Pending review candidates"]
     end
+    subgraph H["Human decision boundary"]
+      QR["Qualified review"] --> RA["Separate risk acceptance"]
+    end
     A --> B
     P --> X
     P --> V
+    Q --> QR
 ```
 
 Model output is untrusted data throughout. It never becomes executable text.
@@ -103,7 +114,8 @@ flowchart TD
     C["Versioned TR control profile"] --> R
     APL["Human applicability"] --> R
     SI["SARIF source digest"] --> IC["Canonical pending candidates"]
-    IC --> HR["External qualified validation"]
+    IC --> HR["Digest-bound qualified review"]
+    HR --> RS["Queue summary; no promotion"]
     HR --> R
     R --> H["Audit dossier + human review"]
 ```

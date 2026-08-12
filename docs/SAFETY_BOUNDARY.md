@@ -18,6 +18,10 @@
 - deterministic redaction of likely secrets and regulated identifiers;
 - bounded SARIF 2.1.0 intake that emits deduplicated pending-review candidates,
   never final findings or automatic control conclusions;
+- digest-bound qualified-tester dispositions with evidence-linked rationale and
+  explicit severity override, without automatic report promotion;
+- separate, time-bounded business-owner risk acceptance with compensating
+  controls and expired-state visibility;
 - source-linked regulatory crosswalk and audit-support report templates;
 - human-confirmed BDDK/SPK/KVKK/TSE/ISO applicability decisions;
 - metadata-only evidence manifest, chain of custody, report delta and
@@ -64,6 +68,9 @@ scope, evidence, severity, impact and conclusion.
 Imported SARIF remains untrusted evidence. FinRedOps records its digest and a
 minimized candidate view, but it does not execute the producing tool, fetch
 artifact URIs, embed source snippets or determine that the observation is valid.
+The v0.5.1 review record captures an asserted human decision but does not
+authenticate the reviewer, verify their qualification or provide a digital
+signature. Those controls remain institution-owned integration requirements.
 
 Regulatory reports are audit-support drafts. BDDK/SPK applicability, TSE
 TS 13638/T2 scope and delivery deadlines require authorized human confirmation;

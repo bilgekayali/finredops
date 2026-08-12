@@ -13,10 +13,11 @@ The model proposes typed actions; deterministic policy enforces scope, time,
 separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> Version 0.5 keeps simulation as the safe default and the v0.4 active boundary
-> unchanged. It adds bounded **SARIF 2.1.0 evidence intake** that normalizes scanner
-> output into deduplicated candidates requiring qualified human review. Imported
-> results cannot become final findings or regulatory conclusions automatically.
+> Version 0.5.1 keeps simulation as the safe default and the v0.4 active boundary
+> unchanged. It adds bounded **SARIF 2.1.0 evidence intake** plus a digest-bound
+> qualified-tester disposition workflow. Risk acceptance requires a separate,
+> time-bounded business-owner decision. Reviewed results still cannot become
+> final findings or regulatory conclusions automatically.
 > FinRedOps is not a general-purpose exploit framework, autonomous penetration
 > tester, legal opinion, regulatory acceptance decision, independent audit, or
 > compliance certificate.
@@ -58,6 +59,8 @@ flowchart TD
 | Institution preflight | Blocks unsafe scope breadth, production risk, contact, rate, and TTL settings |
 | Evidence handling | Deterministically redacts likely secrets, e-mail, valid IBAN and payment-card identifiers |
 | Machine result intake | Bounded SARIF 2.1.0, stable fingerprinting, safe locations, deterministic deduplication and mandatory human review |
+| Finding disposition | Assessment- and digest-bound qualified-tester decision with evidence, severity-override rationale and direct duplicate correlation |
+| Risk acceptance | Separate business risk owner, compensating controls, approval evidence and 1–366 day expiry |
 | Persistence | Append-only SQLite snapshot revisions plus exact audit-prefix verification |
 | Regulatory assurance | Human-confirmed BDDK, current SPK VII-128.10, KVKK, TSE TS 13638/T2 and ISO/IEC applicability plus source-linked conclusions |
 | Reporting | Annual bank, vendor source-code, vendor application and remediation templates |
@@ -97,6 +100,32 @@ Tool levels are recorded as non-final machine severity. Every candidate remains
 `pending_review`; a qualified tester must validate the condition, business impact,
 final severity, evidence and control mappings. See
 [Machine finding intake](docs/EVIDENCE_INTAKE.md) for limits and threat boundaries.
+
+## Qualified finding review in v0.5.1
+
+Create a draft for one candidate, let a qualified tester complete it, then
+finalize and validate the digest-bound decision:
+
+```bash
+python -m finredops finding-review-template \
+  --intake demo-output/finding-intake.json \
+  --finding-id FRX-SARIF-REPLACE-WITH-CANDIDATE-ID \
+  --assessment-type vendor_source_code_review \
+  --output review-draft.json
+python -m finredops finalize-finding-review \
+  --intake demo-output/finding-intake.json \
+  --draft review-draft.json \
+  --output review.json
+python -m finredops validate-finding-review \
+  --intake demo-output/finding-intake.json \
+  --review review.json
+```
+
+Decisions are `confirmed`, `false_positive`, `duplicate`, or `not_applicable`.
+Only a confirmed review can receive a separately recorded, expiring
+`business_risk_owner` acceptance. Review summaries never promote records into a
+report. See [Qualified finding review](docs/FINDING_REVIEW.md) for the complete
+workflow, acceptance commands and trust limits.
 
 ## Run the visual demo
 
@@ -174,6 +203,7 @@ src/finredops/
   runner.py       network-free synthetic evidence runner
   validation.py   optional bounded active validation and draft finding normalizer
   intake.py       bounded SARIF parser and canonical review candidates
+  review.py       qualified disposition, role-separated risk acceptance and queue summary
   evidence.py     sensitive-data minimization boundary
   custody.py      metadata-only evidence registry and custody hash chain
   audit.py        append-only SHA-256 hash chain
@@ -187,7 +217,7 @@ src/finredops/
   bundle.py       deterministic audit dossier builder and verifier
   api.py          loopback-first read-only API
   dashboard.py    self-contained operations interface
-schemas/          versioned engagement, plan, report, applicability, custody, delta, and dossier contracts
+schemas/          versioned engagement, plan, intake, review, report, custody, delta, and dossier contracts
 docs/             architecture, safety, reporting, and regulatory mapping
 examples/         synthetic, reserved-namespace input documents
 tests/            policy, integrity, boundary, and end-to-end tests
@@ -206,6 +236,7 @@ See [Türkiye regulatory profile](docs/TURKEY_REGULATORY_MAPPING.md),
 [Applicability](docs/APPLICABILITY.md), [Chain of custody](docs/CHAIN_OF_CUSTODY.md),
 [Audit dossier](docs/AUDIT_DOSSIER.md), [Controlled validation](docs/CONTROLLED_VALIDATION.md),
 [Machine finding intake](docs/EVIDENCE_INTAKE.md),
+[Qualified finding review](docs/FINDING_REVIEW.md),
 [Threat model](docs/THREAT_MODEL.md), and
 [Roadmap](docs/ROADMAP.md).
 

@@ -146,7 +146,7 @@ def render_dashboard(snapshot: Mapping[str, Any]) -> str:
 </head>
 <body>
 <div class="shell">
-  <aside class="side"><div class="brand">Fin<b>RedOps</b></div><div class="version">ASSURANCE CONTROL PLANE · v0.5</div><div class="nav"><span class="active">Operations</span><span>Engagements</span><span>Approvals</span><span>Evidence</span><span>Regulatory reports</span><span>Audit chain</span></div><div class="boundary">__BOUNDARY__</div></aside>
+  <aside class="side"><div class="brand">Fin<b>RedOps</b></div><div class="version">ASSURANCE CONTROL PLANE · v0.5.1</div><div class="nav"><span class="active">Operations</span><span>Engagements</span><span>Approvals</span><span>Evidence</span><span>Regulatory reports</span><span>Audit chain</span></div><div class="boundary">__BOUNDARY__</div></aside>
   <main class="main">
     <header class="top"><div><div class="eyebrow">Governed security validation</div><h1>__NAME__</h1><div class="sub">__ENGAGEMENT_ID__ · digest __DIGEST__</div></div><div class="status">● __PREFLIGHT__ · __STATUS__</div></header>
     <section class="grid metrics"><div class="metric"><p>Approved scope</p><strong>__ASSETS__</strong><em>exact assets</em></div><div class="metric"><p>Proposed actions</p><strong>__PROPOSALS__</strong><em>closed catalog</em></div><div class="metric"><p>Completed safely</p><strong>__COMPLETED__</strong><em>__EXECUTION_MIX__</em></div><div class="metric"><p>Policy denials</p><strong>__DENIED__</strong><em>fail closed</em></div></section>
