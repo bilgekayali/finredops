@@ -1,8 +1,9 @@
-"""Unified v0.6 operator commands layered over the existing FinRedOps CLI.
+"""Unified operator commands layered over the existing FinRedOps CLI.
 
 The legacy command surface remains unchanged. This module adds the explicit
-qualified-review -> draft-report workflow without moving report issuance or
-human approval into automation.
+qualified-review -> draft-report workflow plus release-integrity utilities
+without moving report issuance, provenance claims, or human approval into
+automation.
 """
 
 from __future__ import annotations
@@ -22,6 +23,12 @@ from .promotion import (
     build_synthetic_demo,
 )
 from .regulations import AssessmentType
+from .release_integrity import (
+    ReleaseIntegrityError,
+    export_packaged_examples,
+    packaged_example_path,
+    verify_release_checksums,
+)
 from .reporting import validate_report
 from .review import (
     QualifiedFindingReview,
@@ -37,6 +44,8 @@ OPERATOR_COMMANDS = {
     "reviewed-report-spec-template",
     "promote-reviewed-report",
     "demo-reviewed-report",
+    "export-examples",
+    "verify-release-checksums",
 }
 
 
@@ -70,8 +79,28 @@ def _command_parser(command: str) -> argparse.ArgumentParser:
         parser.description = (
             "Reproduce the bundled synthetic SARIF -> review -> draft-report workflow."
         )
-        parser.add_argument("--sarif", type=Path, required=True)
+        parser.add_argument(
+            "--sarif",
+            type=Path,
+            help=(
+                "Optional SARIF input. If omitted, use the synthetic SARIF shipped "
+                "inside the installed FinRedOps package."
+            ),
+        )
         parser.add_argument("--output-dir", type=Path, required=True)
+        return parser
+    if command == "export-examples":
+        parser.description = (
+            "Export the synthetic engagement, plan, and SARIF inputs shipped in the package."
+        )
+        parser.add_argument("--output-dir", type=Path, required=True)
+        return parser
+    if command == "verify-release-checksums":
+        parser.description = (
+            "Verify a sha256sum-style release manifest against local release artifacts."
+        )
+        parser.add_argument("--manifest", type=Path, required=True)
+        parser.add_argument("--directory", type=Path, required=True)
         return parser
     raise ValueError(f"Unknown operator command: {command}")
 
@@ -84,6 +113,9 @@ def _augmented_help() -> str:
         + "  reviewed-report-spec-template  build a fillable promotion specification\n"
         + "  promote-reviewed-report        create a human-approval-required draft report\n"
         + "  demo-reviewed-report           reproduce the synthetic reviewed-report example\n"
+        + "\nv0.6.1 release integrity:\n"
+        + "  export-examples                export examples shipped inside the installed package\n"
+        + "  verify-release-checksums       verify local SHA-256 release artifact integrity\n"
     )
 
 
@@ -195,6 +227,27 @@ def _run_operator_command(argv: Sequence[str]) -> int:
     command = argv[0]
     args = _command_parser(command).parse_args(list(argv[1:]))
     try:
+        if command == "export-examples":
+            paths = export_packaged_examples(args.output_dir)
+            print(
+                json.dumps(
+                    {
+                        "schema_version": "finredops.packaged-examples.v1",
+                        "output_dir": str(args.output_dir),
+                        "files": [path.name for path in paths],
+                        "synthetic_only": True,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 0
+
+        if command == "verify-release-checksums":
+            result = verify_release_checksums(args.manifest, args.directory)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result["valid"] else 1
+
         if command == "reviewed-report-spec-template":
             document = _spec_template(
                 intake_path=args.intake,
@@ -233,7 +286,11 @@ def _run_operator_command(argv: Sequence[str]) -> int:
                     "reviews",
                 ),
             )
-            report, manifest = build_synthetic_demo(args.sarif, args.output_dir)
+            if args.sarif is not None:
+                report, manifest = build_synthetic_demo(args.sarif, args.output_dir)
+            else:
+                with packaged_example_path("synthetic_sast.sarif.json") as sarif_path:
+                    report, manifest = build_synthetic_demo(sarif_path, args.output_dir)
 
         validation = validate_report(report)
         print(
@@ -258,6 +315,7 @@ def _run_operator_command(argv: Sequence[str]) -> int:
         SarifIntakeError,
         ReviewDocumentError,
         ReportPromotionError,
+        ReleaseIntegrityError,
         ValueError,
     ) as exc:
         print(f"INVALID: {exc}")
