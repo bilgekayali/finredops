@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "FinRedOps Synthetic SAST",
+          "semanticVersion": "1.0.0",
+          "rules": [
+            {
+              "id": "SYN-SQL-001",
+              "shortDescription": {
+                "text": "Synthetic query construction requires review"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "precision": "high",
+                "tags": [
+                  "CWE-89",
+                  "OWASP-ASVS-v5.0.0-1.2.4"
+                ]
+              }
+            },
+            {
+              "id": "SYN-LOG-001",
+              "shortDescription": {
+                "text": "Synthetic diagnostic output requires review"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "precision": "medium",
+                "tags": [
+                  "CWE-532"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "SYN-SQL-001",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Synthetic query construction observed; api_key=synthetic-not-a-real-secret must not enter the review queue."
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash/v1": "synthetic-query-fingerprint"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/synthetic/query.py"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SYN-SQL-001",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Duplicate synthetic observation for the same stable scanner fingerprint."
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash/v1": "synthetic-query-fingerprint"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/synthetic/query.py"
+                },
+                "region": {
+                  "startLine": 44,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SYN-LOG-001",
+          "ruleIndex": 1,
+          "message": {
+            "text": "Synthetic diagnostic output references reviewer@example.test and requires human confirmation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/example/private/build.log"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
