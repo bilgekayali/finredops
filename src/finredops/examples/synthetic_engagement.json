@@ -1,0 +1,45 @@
+{
+  "engagement_id": "FRX-DEMO-2026-001",
+  "name": "Synthetic payment resilience review",
+  "requester_id": "demo.requester",
+  "critical_functions": ["card authorization", "customer identity"],
+  "assets": [
+    {
+      "asset_id": "ASSET-PAY-001",
+      "kind": "hostname",
+      "value": "payments-lab.example.test",
+      "environment": "lab",
+      "data_classification": "internal",
+      "critical_function": "card authorization"
+    },
+    {
+      "asset_id": "ASSET-IAM-001",
+      "kind": "hostname",
+      "value": "identity-lab.example.test",
+      "environment": "lab",
+      "data_classification": "confidential",
+      "critical_function": "customer identity"
+    }
+  ],
+  "excluded_assets": [
+    {
+      "asset_id": "ASSET-CORE-EXCLUDED",
+      "kind": "hostname",
+      "value": "core-banking.example.test",
+      "environment": "production",
+      "data_classification": "restricted",
+      "critical_function": "core ledger"
+    }
+  ],
+  "allowed_actions": [
+    "http.response_headers.inspect",
+    "tls.certificate_metadata.inspect",
+    "http.security_posture.validate"
+  ],
+  "window_start": "2026-08-12T09:00:00Z",
+  "window_end": "2026-08-12T11:00:00Z",
+  "emergency_contacts": ["demo.control@example.test"],
+  "max_requests_per_minute": 5,
+  "approval_ttl_minutes": 90,
+  "status": "draft"
+}

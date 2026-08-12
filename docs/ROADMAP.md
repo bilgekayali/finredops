@@ -76,8 +76,28 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] no-overwrite protection for generated operator artifacts;
 - [x] package and `python -m finredops` entrypoints routed through the operator CLI;
 - [x] Python 3.11/3.12/3.13 end-to-end CLI regression coverage;
-- [ ] signed release artifacts and provenance attestation;
-- [ ] packaged example inputs for installed-wheel demonstrations;
+- [x] signed release artifacts and provenance attestation;
+- [x] packaged example inputs for installed-wheel demonstrations;
+
+## v0.6.1 — release integrity and provenance
+
+- [x] wheel and source-distribution build workflow with version-tag binding;
+- [x] SHA-256 release manifest plus strict local verification command;
+- [x] GitHub/Sigstore artifact provenance using `actions/attest`;
+- [x] synthetic engagement, plan and SARIF package data;
+- [x] source-checkout-independent `demo-reviewed-report` default;
+- [x] clean-wheel smoke test for packaged examples, draft report generation and checksums;
+- [x] tag-triggered GitHub Release publication and manual build/attestation mode;
+- [x] documentation that separates checksum integrity from provenance verification;
+
+## v0.7 — trust and identity
+
+- [ ] authenticated reviewer identity assertions from an external identity provider;
+- [ ] cryptographic binding of reviewer identity to engagement, intake and decision digest;
+- [ ] review supersession and revocation without deleting historical decisions;
+- [ ] current-authoritative-review resolution for report promotion;
+- [ ] key-backed report approval and risk-acceptance signatures;
+- [ ] signature verification evidence exposed through CLI and audit-support outputs;
 
 ## Platform hardening
 
