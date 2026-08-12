@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-attest-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate release tag against package version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use vMAJOR.MINOR.PATCH." >&2
+            exit 1
+          fi
+          PACKAGE_VERSION="$(python - <<'PY'
+          import tomllib
+          with open('pyproject.toml', 'rb') as source:
+              print(tomllib.load(source)['project']['version'])
+          PY
+          )"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          test "${PACKAGE_VERSION}" = "${TAG_VERSION}" || {
+            echo "Tag ${TAG_VERSION} does not match package version ${PACKAGE_VERSION}." >&2
+            exit 1
+          }
+
+      - name: Build wheel and source distribution
+        run: |
+          python -m pip install build
+          python -m build
+
+      - name: Smoke-test installed wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/finredops-release
+          /tmp/finredops-release/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/finredops-release/bin/finredops export-examples --output-dir /tmp/finredops-release-examples
+          /tmp/finredops-release/bin/finredops validate-engagement /tmp/finredops-release-examples/synthetic_engagement.json
+          /tmp/finredops-release/bin/finredops validate-plan /tmp/finredops-release-examples/synthetic_ai_plan.json --engagement /tmp/finredops-release-examples/synthetic_engagement.json
+          /tmp/finredops-release/bin/finredops demo-reviewed-report --output-dir /tmp/finredops-release-reviewed
+          /tmp/finredops-release/bin/finredops validate-report /tmp/finredops-release-reviewed/regulatory-report.json
+
+      - name: Generate SHA-256 checksum manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.whl *.tar.gz > CHECKSUMS.sha256
+          cd ..
+          /tmp/finredops-release/bin/finredops verify-release-checksums --manifest dist/CHECKSUMS.sha256 --directory dist
+
+      - name: Generate GitHub/Sigstore build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: "dist/*"
+
+      - name: Upload release build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: finredops-release-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/CHECKSUMS.sha256
+
+      - name: Publish GitHub Release for version tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --verify-tag \
+            --generate-notes \
+            --title "FinRedOps ${GITHUB_REF_NAME}"
