@@ -13,11 +13,12 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.6.0** keeps simulation as the safe default and preserves the
-> bounded v0.4 active-validation boundary. It adds one end-to-end operator
-> workflow across SARIF evidence intake, qualified finding review, explicit
-> draft-report promotion, report validation, and reproducible synthetic output.
-> Report issuance and human approval remain outside automation.
+> **Version 0.6.1** keeps simulation as the safe default and preserves the
+> bounded v0.4 active-validation boundary. It adds release-integrity controls
+> around the v0.6 end-to-end operator workflow: packaged synthetic examples,
+> clean-wheel smoke testing, SHA-256 release verification, version-tag binding,
+> and GitHub/Sigstore build provenance. Report issuance and human approval
+> remain outside automation.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -58,7 +59,7 @@ flowchart TD
 
 ## Core control model
 
-| Boundary | v0.6 behavior |
+| Boundary | v0.6.1 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -72,6 +73,7 @@ flowchart TD
 | Risk acceptance | Separate business risk owner with compensating controls and expiry |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
 | Operator workflow | One CLI surface for legacy commands, report-spec templates, promotion, and synthetic demonstration |
+| Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only hash chain and offline-verifiable artifacts |
 
@@ -161,17 +163,50 @@ finredops render-report work/reviewed-report/regulatory-report.json \
 For the complete sequence, see
 **[v0.6 Operator Workflow](docs/OPERATOR_WORKFLOW.md)**.
 
-## Reproduce the reviewed-report demo
+## Reproduce the reviewed-report demo from an installed wheel
+
+v0.6.1 ships the synthetic engagement, plan, and SARIF input as package data.
+A source checkout is no longer required for the reviewed-report demo:
 
 ```bash
-finredops demo-reviewed-report \
-  --sarif examples/synthetic_sast.sarif.json \
-  --output-dir demo-output/reviewed
+finredops export-examples --output-dir finredops-examples
+finredops demo-reviewed-report --output-dir demo-output/reviewed
+finredops validate-report demo-output/reviewed/regulatory-report.json
 ```
 
-This creates canonical intake, two finalized synthetic reviews, one promoted
+`demo-reviewed-report` uses the packaged synthetic SARIF by default. An explicit
+SARIF file may still be supplied with `--sarif`.
+
+The demo creates canonical intake, two finalized synthetic reviews, one promoted
 finding, a draft JSON/Markdown report, and a promotion manifest. No live target
 is contacted.
+
+## v0.6.1 release integrity and provenance
+
+Tagged releases build a wheel and source distribution, smoke-test the installed
+wheel in a clean environment, generate a `CHECKSUMS.sha256` manifest, and create
+GitHub/Sigstore artifact provenance.
+
+Local checksum verification:
+
+```bash
+finredops verify-release-checksums \
+  --manifest ./CHECKSUMS.sha256 \
+  --directory .
+```
+
+This verifies local SHA-256 integrity only. It deliberately does **not** claim
+that provenance has been verified.
+
+Verify the build origin separately with GitHub CLI artifact attestations:
+
+```bash
+gh attestation verify finredops-0.6.1-py3-none-any.whl \
+  --repo bilgekayali/finredops
+```
+
+See **[Release integrity and provenance](docs/RELEASE_INTEGRITY.md)** for the
+trust model, tag/version binding, clean-wheel test, and verification boundaries.
 
 ## Existing visual and assurance demo
 
@@ -197,32 +232,34 @@ review dossier.
 
 ```text
 src/finredops/
-  planner.py       strict AI-to-control-plane boundary
-  policy.py        deterministic deny-by-default authorization
-  catalog.py       closed catalog of typed actions
-  runner.py        network-free synthetic evidence runner
-  validation.py    optional bounded active validation
-  intake.py        bounded SARIF parser and canonical candidates
-  review.py        qualified disposition and role-separated risk acceptance
-  promotion.py     explicit reviewed-finding to draft-report boundary
-  operator_cli.py  v0.6 unified operator workflow and legacy delegation
-  evidence.py      sensitive-data minimization boundary
-  custody.py       metadata-only evidence registry and custody hash chain
-  audit.py         append-only SHA-256 audit chain
-  store.py         transactional SQLite revisions and audit persistence
-  service.py       engagement and approval state machine
-  profiles.py      financial-institution preflight policy
-  regulations.py  versioned Turkish regulatory control registry
-  applicability.py human-confirmed regulatory/standards scope
-  reporting.py     audit-support validation, crosswalk, and renderer
-  diffing.py       report revision and remediation delta
-  bundle.py        deterministic audit dossier builder and verifier
-  api.py           loopback-first read-only API
-  dashboard.py     self-contained operations interface
-schemas/           versioned data contracts
-docs/              architecture, safety, assurance, and operator workflow
-examples/          synthetic reserved-namespace inputs
-tests/             policy, integrity, boundary, and end-to-end tests
+  planner.py           strict AI-to-control-plane boundary
+  policy.py            deterministic deny-by-default authorization
+  catalog.py           closed catalog of typed actions
+  runner.py            network-free synthetic evidence runner
+  validation.py        optional bounded active validation
+  intake.py            bounded SARIF parser and canonical candidates
+  review.py            qualified disposition and role-separated risk acceptance
+  promotion.py         explicit reviewed-finding to draft-report boundary
+  operator_cli.py      unified operator workflow and release-integrity commands
+  release_integrity.py packaged examples and strict local checksum verification
+  examples/            installed-wheel synthetic engagement, plan, and SARIF
+  evidence.py          sensitive-data minimization boundary
+  custody.py           metadata-only evidence registry and custody hash chain
+  audit.py             append-only SHA-256 audit chain
+  store.py             transactional SQLite revisions and audit persistence
+  service.py           engagement and approval state machine
+  profiles.py          financial-institution preflight policy
+  regulations.py      versioned Turkish regulatory control registry
+  applicability.py     human-confirmed regulatory/standards scope
+  reporting.py         audit-support validation, crosswalk, and renderer
+  diffing.py           report revision and remediation delta
+  bundle.py            deterministic audit dossier builder and verifier
+  api.py               loopback-first read-only API
+  dashboard.py         self-contained operations interface
+schemas/               versioned data contracts
+docs/                  architecture, safety, assurance, operator, and release workflow
+examples/              source-tree synthetic reserved-namespace inputs
+tests/                 policy, integrity, boundary, packaging, and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -235,6 +272,11 @@ certification, or compliance. A generated report remains an audit-support draft
 until it has been scoped, tested, evidenced, independently reviewed, and signed
 by authorized humans.
 
+Release checksum validation establishes local byte integrity relative to the
+supplied manifest; it does not establish build origin. GitHub/Sigstore artifact
+attestations address build provenance only when the consumer verifies them.
+Neither mechanism authenticates reviewers or report approvers.
+
 Key documentation:
 
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
@@ -244,6 +286,7 @@ Key documentation:
 - [Qualified finding review](docs/FINDING_REVIEW.md)
 - [Reviewed report promotion](docs/REVIEWED_REPORT_PROMOTION.md)
 - [v0.6 Operator Workflow](docs/OPERATOR_WORKFLOW.md)
+- [Release integrity and provenance](docs/RELEASE_INTEGRITY.md)
 - [Reporting model](docs/REPORTING_MODEL.md)
 - [Türkiye regulatory mapping](docs/TURKEY_REGULATORY_MAPPING.md)
 - [Applicability](docs/APPLICABILITY.md)
