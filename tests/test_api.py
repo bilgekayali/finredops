@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from finredops.api import create_read_only_server
-from finredops.demo import build_demo_service
+from finredops.demo import build_demo_assurance_snapshot, build_demo_service
 
 from tests.helpers import NOW
 
@@ -15,8 +15,11 @@ from tests.helpers import NOW
 class ApiTests(unittest.TestCase):
     def setUp(self) -> None:
         service, engagement_id = build_demo_service(now=NOW)
+        snapshot, _, _, _ = build_demo_assurance_snapshot(
+            service, engagement_id, now=NOW
+        )
         self.server = create_read_only_server(
-            service.snapshot(engagement_id), host="127.0.0.1", port=0
+            snapshot, host="127.0.0.1", port=0
         )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -55,6 +58,19 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(profile["profile_id"], "turkey-financial-assurance-v1")
         self.assertIn("annual_bank_penetration", capabilities["report_types"])
         self.assertTrue(capabilities["human_issue_approval_required"])
+        self.assertTrue(capabilities["report_delta_supported"])
+
+    def test_applicability_and_evidence_metadata_are_exposed(self) -> None:
+        with urlopen(self.base + "/api/v1/regulatory/applicability", timeout=2) as response:
+            applicability = json.load(response)
+        with urlopen(self.base + "/api/v1/evidence/manifest", timeout=2) as response:
+            evidence = json.load(response)
+        self.assertTrue(applicability["ready_for_audit"])
+        self.assertTrue(
+            any(item["authority"] == "TSE" for item in applicability["decisions"])
+        )
+        self.assertTrue(evidence["valid"])
+        self.assertFalse(evidence["raw_evidence_embedded"])
 
     def test_unknown_route_returns_json_404(self) -> None:
         with self.assertRaises(HTTPError) as caught:

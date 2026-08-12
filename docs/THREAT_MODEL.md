@@ -8,7 +8,7 @@
 - evidence integrity and audit continuity;
 - institution and customer data that must never enter this prototype.
 
-## Principal threats and v0.2 mitigations
+## Principal threats and v0.3 mitigations
 
 | Threat | Mitigation | Residual limitation |
 |---|---|---|
@@ -25,6 +25,11 @@
 | Sensitive data enters evidence | Deterministic secret/identifier redaction before receipt creation | Institution-owned DLP and encrypted evidence vault remain external |
 | Broad or production-unsafe scope is approved | Versioned institution preflight blocks breadth, risk, contact, rate, and TTL violations | Asset ownership and legal authority remain external |
 | A stale regulation is treated as current | Versioned, dated, source-linked control registry and applicability notes | Legal/compliance must revalidate every engagement |
+| Legal or standards scope is inferred automatically | Tri-state, human-confirmed BDDK/SPK/KVKK/TSE/ISO applicability | Authorized reviewers can still make an incorrect decision |
+| Raw evidence leaks through the dossier | Approved opaque URI schemes and metadata-only ZIP contract | The institution-owned vault remains outside this prototype |
+| Evidence metadata is rewritten | Content digest plus append-only custody hash chain | Hashes are not external signatures or immutable timestamps |
+| A report revision hides regression | Stable-ID delta lists missing, reopened, new and worsened records | Reviewers must preserve stable identifiers |
+| A bundle is altered or path-crafted | Exact manifest, size/digest checks, path traversal/symlink/encryption rejection | External PKI signing is not implemented |
 | Automation declares its own report final | Issued/approved reports require two distinct human approval records | Demo identities are not cryptographically authenticated |
 | Dashboard injects HTML | Contextual HTML escaping and CSP | Production UI security review is still required |
 

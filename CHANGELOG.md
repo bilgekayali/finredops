@@ -4,6 +4,28 @@ All notable changes to FinRedOps are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-12
+
+### Added
+
+- Human-confirmed, tri-state BDDK/SPK/KVKK/TSE/ISO applicability assessment.
+- TSE TS 13638/T2 public qualification/process references and the current TSE
+  Sızma Testi Kapsamı link, with licensed-text evidence requirements.
+- Metadata-only evidence manifest with immutable content digests, retention
+  metadata and append-only chain-of-custody events.
+- Report revision delta for new, missing, closed, reopened, severity, retest and
+  control-conclusion changes.
+- Deterministic audit dossier builder and safe offline ZIP verifier.
+- CLI/API/dashboard integration, four new JSON schemas and focused integrity tests.
+
+### Security
+
+- Regulatory-submission packaging fails closed without current profiles,
+  human-confirmed applicability, issued/two-person-approved reports, complete
+  evidence locators and intact audit/custody chains.
+- Audit dossiers contain metadata and opaque evidence references only. Live
+  execution, exploit delivery, credential attacks and arbitrary commands remain absent.
+
 ## [0.2.0] - 2026-08-12
 
 ### Added

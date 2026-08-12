@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finredops"
-version = "0.2.0"
+version = "0.3.0"
 description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,6 +20,7 @@ keywords = [
   "penetration-testing",
   "regtech",
   "red-team",
+  "tse-13638",
   "tiber-eu",
 ]
 classifiers = [

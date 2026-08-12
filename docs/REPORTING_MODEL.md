@@ -1,6 +1,6 @@
 # Denetim destek raporlama modeli
 
-FinRedOps v0.2 üç ana çalışma için aynı izlenebilir rapor omurgasını kullanır:
+FinRedOps v0.3 üç ana çalışma için aynı izlenebilir rapor omurgasını kullanır:
 yıllık banka sızma testi, tedarikçi kaynak kod güvenlik incelemesi ve tedarikçi
 uygulama sızma testi. Dördüncü tür, önceki bulguların giderim doğrulamasıdır.
 
@@ -27,7 +27,7 @@ taslağı “yayıma hazır” saymaz. Bir otomasyon veya model kendi raporunu o
 - yöntem, test edilen zorunlu alanlar ve açık sınırlamalar;
 - güvenli bulgu özeti, iş etkisi, öneri, sorumlu ve hedef tarih;
 - ham veriyi içermeyen kanıt URI'leri;
-- BDDK, SPK, KVKK ve ISO/IEC kontrol sonuçları;
+- BDDK, SPK, KVKK, TSE ve ISO/IEC kontrol sonuçları;
 - yeniden test tarihi, sonucu ve ayrı kapanış kanıtı;
 - iki ayrı insan onay kaydı.
 
@@ -38,6 +38,11 @@ Rapor yalnızca `evidence://`, `attachment://` ve
 müşteri verisi, tam istek/yanıt gövdesi veya exploit tarifi Markdown/JSON rapora
 gömülmez. Gerçek kanıt deposu kurumun erişim kontrolü, şifreleme, saklama ve
 silme politikası altında ayrıca işletilmelidir.
+
+v0.3 `evidence-manifest.json` ile her opak referans için içerik özeti, boyut,
+MIME türü, kaynak sistem, toplayan kişi, zaman, sınıflandırma, kişisel veri
+bayrakları ve saklama tarihini kaydeder. Kayıt, erişim, doğrulama, devir,
+legal hold ve imha işlemleri ayrı bir SHA-256 gözetim zincirine eklenir.
 
 ## Bulgular ve yeniden test
 
@@ -54,6 +59,20 @@ listeler ve sonuç kaydı eksikse doğrulamayı durdurur. Koşullu bir mevzuat m
 kaynaklar için [Türkiye düzenleyici eşlemesi](TURKEY_REGULATORY_MAPPING.md)
 belgesine bakın.
 
+## Sürüm farkı ve teslim paketi
+
+`compare-reports`, aynı kuruluş ve değerlendirme türüne ait iki raporu kararlı
+bulgu/kontrol kimlikleri üzerinden karşılaştırır. Yeni veya kayıp bulguları,
+kapanış ve yeniden açılmayı, önem artış/azalışını, yeniden test değişimini ve
+kontrol gerileme/iyileşmesini ayrı alanlarda gösterir.
+
+`audit-dossier.zip` raporu, Markdown görünümünü, çapraz kontrolü,
+uygulanabilirlik kararını, kanıt manifestini ve denetim zincirini deterministik
+bir manifest altında toplar. Ham kanıt içermez. `regulatory_submission` amacı;
+güncel profil, tarihli insan uygulanabilirlik onayı, iki farklı rapor onayı,
+`issued` durumu, eksiksiz kanıt lokasyonları ve sağlam zincirler olmadan
+oluşturulamaz.
+
 ## Çıktılar
 
 `finredops demo` aşağıdaki sentetik çıktıları üretir:
@@ -61,6 +80,9 @@ belgesine bakın.
 - `regulatory-report.md`: insan incelemesine uygun belge;
 - `regulatory-report.json`: makinece doğrulanabilir rapor;
 - `regulatory-crosswalk.json`: kaynak bağlantılı kontrol/kanıt/bulgu matrisi;
+- `applicability.json`: insan onaylı tabiiyet ve şartname kapsam kararları;
+- `evidence-manifest.json`: ham veri içermeyen kanıt ve gözetim zinciri;
+- `audit-dossier.zip`: deterministik, çevrimdışı doğrulanabilir inceleme paketi;
 - `finredops.db`: sürümlü anlık görüntü ve hash zincirli denetim kaydı.
 
 JSON sözleşmeleri `schemas/` altında sürümlenir. Sentetik demo gerçek sızma testi

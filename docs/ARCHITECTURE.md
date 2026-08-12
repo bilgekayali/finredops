@@ -1,6 +1,6 @@
 # Architecture
 
-FinRedOps v0.2 is a small reference control plane, not a scanner. Its central
+FinRedOps v0.3 is a small reference control plane, not a scanner. Its central
 design choice is to separate probabilistic planning from deterministic
 authorization and execution.
 
@@ -32,6 +32,14 @@ authorization and execution.
     mandatory test coverage, finding ownership, remediation, and human sign-off.
 12. **Read-only API** exposes synthetic state over GET/HEAD only on loopback by
     default; no state-changing endpoint exists.
+13. **Applicability engine** records human-confirmed BDDK, SPK, KVKK, TSE and
+    ISO scope decisions without inferring legal applicability from an entity label.
+14. **Evidence custody registry** binds opaque evidence locators to content
+    digests, custodians, retention metadata and a separate hash chain.
+15. **Report delta engine** makes new, missing, closed, reopened and severity or
+    control changes explicit between report revisions.
+16. **Audit dossier builder** creates a deterministic metadata-only ZIP and
+    verifies paths, sizes, digests and embedded documents without extraction.
 
 ## Trust boundaries
 
@@ -52,11 +60,11 @@ flowchart LR
 ```
 
 Model output is untrusted data throughout. It never becomes executable text.
-The v0.1 execution zone contains no live adapter.
+The v0.3 execution zone contains no live adapter.
 
 ## State and persistence
 
-The service state machine remains process-local, while v0.2 adds a transactional
+The service state machine remains process-local, while v0.2 added a transactional
 SQLite export store. Snapshots are immutable revisions; audit events must extend
 the stored chain exactly. This is durable demonstration storage, not a complete
 multi-tenant system of record. Production still requires authenticated identities,
@@ -71,9 +79,11 @@ flowchart TD
     P --> A["Synthetic evidence receipt"]
     A --> G["Evidence guard"]
     G --> S["SQLite + hash audit"]
-    S --> R["Audit-support report"]
+    S --> M["Evidence manifest"]
+    M --> R["Audit-support report"]
     C["Versioned TR control profile"] --> R
-    R --> H["Two-person human review"]
+    APL["Human applicability"] --> R
+    R --> H["Audit dossier + human review"]
 ```
 
 ## Proposed future live boundary
@@ -81,4 +91,4 @@ flowchart TD
 Live passive collection, if ever implemented, should be a separate signed
 runner with short-lived workload identity, outbound allowlisting, isolated
 workers, an institution-owned policy decision point, and no arbitrary-command
-interface. It is intentionally absent from v0.1.
+interface. It is intentionally absent from v0.3.

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/applicability.schema.json",
+  "title": "FinRedOps regulatory applicability assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "context", "regulatory_profile_id",
+    "regulatory_profile_digest", "decisions", "warnings",
+    "ready_for_audit", "assessment_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.applicability.v1"},
+    "context": {"$ref": "#/$defs/context"},
+    "regulatory_profile_id": {"type": "string", "minLength": 1},
+    "regulatory_profile_digest": {"$ref": "#/$defs/digest"},
+    "decisions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/decision"}
+    },
+    "warnings": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "ready_for_audit": {"type": "boolean"},
+    "assessment_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableBoolean": {"type": ["boolean", "null"]},
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context_id", "institution_name", "institution_type", "assessment_type",
+        "bddk_in_scope", "spk_in_scope", "processes_personal_data",
+        "iso27001_in_scope", "tse_ts13638_in_scope", "outsourced_service",
+        "internet_facing", "critical_system", "rationale", "confirmed_by",
+        "confirmed_at", "exceptions"
+      ],
+      "properties": {
+        "context_id": {"type": "string", "minLength": 1},
+        "institution_name": {"type": "string", "minLength": 1},
+        "institution_type": {
+          "enum": [
+            "bank", "payment_or_e_money", "capital_market",
+            "insurance_or_pension", "financial_technology_vendor",
+            "other_regulated_financial"
+          ]
+        },
+        "assessment_type": {
+          "enum": [
+            "annual_bank_penetration", "vendor_source_code_review",
+            "vendor_application_penetration", "remediation_verification"
+          ]
+        },
+        "bddk_in_scope": {"$ref": "#/$defs/nullableBoolean"},
+        "spk_in_scope": {"$ref": "#/$defs/nullableBoolean"},
+        "processes_personal_data": {"$ref": "#/$defs/nullableBoolean"},
+        "iso27001_in_scope": {"$ref": "#/$defs/nullableBoolean"},
+        "tse_ts13638_in_scope": {"$ref": "#/$defs/nullableBoolean"},
+        "outsourced_service": {"type": "boolean"},
+        "internet_facing": {"type": "boolean"},
+        "critical_system": {"type": "boolean"},
+        "rationale": {"type": "string", "minLength": 1},
+        "confirmed_by": {"type": "string"},
+        "confirmed_at": {
+          "oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]
+        },
+        "exceptions": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["control_id", "authority", "decision", "rationale", "source_url"],
+      "properties": {
+        "control_id": {"type": "string", "minLength": 1},
+        "authority": {"enum": ["BDDK", "SPK", "KVKK", "TSE", "ISO/IEC"]},
+        "decision": {"enum": ["applicable", "not_applicable", "requires_confirmation"]},
+        "rationale": {"type": "string", "minLength": 1},
+        "source_url": {"type": "string", "format": "uri", "pattern": "^https://"}
+      }
+    }
+  }
+}

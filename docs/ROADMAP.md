@@ -12,7 +12,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] self-contained operations dashboard;
 - [x] security boundary, threat model, control mapping, and tests.
 
-## v0.2 — durable assurance (current branch)
+## v0.2 — durable assurance
 
 - [x] append-only SQLite snapshot revisions and audit-prefix verification;
 - [x] financial-institution policy preflight;
@@ -22,6 +22,15 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] annual bank, vendor source-code and vendor application report templates;
 - [x] mandatory coverage, finding ownership and retest-evidence validation;
 - [x] JSON schemas and synthetic audit-support report package;
+
+## v0.3 — audit dossier (current branch)
+
+- [x] human-confirmed BDDK, SPK, KVKK, TSE and ISO applicability matrix;
+- [x] TSE TS 13638/T2 public prerequisites and licensed-clause evidence model;
+- [x] metadata-only evidence registry and hash-chained custody history;
+- [x] finding, severity, retest and control-conclusion report delta;
+- [x] deterministic audit dossier and safe offline verifier;
+- [x] CLI, read-only API, dashboard, JSON schemas and integrity tests;
 - [ ] signed identities using an external identity provider;
 - [ ] tenant isolation and institution-owned encryption keys;
 - [ ] key-backed approval and receipt signatures;

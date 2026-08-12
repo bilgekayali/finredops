@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/evidence-manifest.schema.json",
+  "title": "FinRedOps metadata-only evidence manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "engagement_id", "artifacts", "custody_events",
+    "manifest_digest", "valid", "verification_errors", "raw_evidence_embedded"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.evidence-manifest.v1"},
+    "engagement_id": {"type": "string", "minLength": 1},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "custody_events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "manifest_digest": {"$ref": "#/$defs/digest"},
+    "valid": {"type": "boolean"},
+    "verification_errors": {"type": "array", "items": {"type": "string"}},
+    "raw_evidence_embedded": {"const": false}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id", "title", "evidence_type", "classification",
+        "content_sha256", "size_bytes", "media_type", "source_system",
+        "collected_at", "collected_by", "locator", "description",
+        "retention_until", "contains_personal_data", "sanitized"
+      ],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "evidence_type": {
+          "enum": [
+            "screenshot", "tool_output", "log_extract", "configuration_export",
+            "source_review", "approval_record", "test_result", "other"
+          ]
+        },
+        "classification": {"enum": ["public", "internal", "confidential", "restricted"]},
+        "content_sha256": {"$ref": "#/$defs/digest"},
+        "size_bytes": {"type": "integer", "minimum": 0, "maximum": 5000000000},
+        "media_type": {"type": "string", "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*$"},
+        "source_system": {"type": "string", "minLength": 1},
+        "collected_at": {"type": "string", "format": "date-time"},
+        "collected_by": {"type": "string", "minLength": 1},
+        "locator": {"type": "string", "pattern": "^(vault|evidence|attachment|qualification-evidence)://"},
+        "description": {"type": "string", "minLength": 1},
+        "retention_until": {"type": "string", "format": "date"},
+        "contains_personal_data": {"type": "boolean"},
+        "sanitized": {"type": "boolean"}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence", "timestamp", "actor_id", "event_type", "engagement_id",
+        "payload", "previous_hash", "event_hash"
+      ],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 1},
+        "timestamp": {"type": "string", "format": "date-time"},
+        "actor_id": {"type": "string", "minLength": 1},
+        "event_type": {"type": "string", "pattern": "^evidence\\."},
+        "engagement_id": {"type": "string", "minLength": 1},
+        "payload": {"type": "object", "required": ["evidence_id", "purpose"]},
+        "previous_hash": {"$ref": "#/$defs/digest"},
+        "event_hash": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

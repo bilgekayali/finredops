@@ -76,6 +76,40 @@ açık bulguda sorumlu ve hedef tarih; başarılı yeniden testte ayrı tarih ve
 kanıt referansı ister. Ham kişisel veri rapora gömülmez; kanıt koruyucusu e-posta,
 geçerli IBAN/kart ve sır olabilecek alanları deterministik olarak maskeler.
 
+## TSE TS 13638/T2 ve Sızma Testi Kapsamı
+
+Kamuya açık resmî kaynaklar:
+
+- [TSE Bilişim Teknolojileri Sızma Testleri](https://www.tse.org.tr/sizma-testleri/)
+- [TSE Sızma Testi Yapan Firmaların Belgelendirilmesi](https://www.tse.org.tr/sizma-testi-belgelendirmesi/)
+
+TSE'nin kamuya açık sayfaları, bilişim teknolojileri sızma testlerini ulusal
+`TS 13638` standardı çerçevesinde tanımlar; firma belgelendirme sayfası güncel
+dayanağı `TS 13638/T2 — Bilgi Teknolojileri - Güvenlik Teknikleri - Sızma testi
+yapan personel ve firmalar için şartlar` olarak adlandırır. Aynı sayfa A/B/C
+firma seviyeleri, personel yeterlilikleri, uygulanabilir ISO/IEC 27001 koşulları,
+sözleşme/proje kayıtları ve TSE incelemesi hakkında kamuya açık ön koşulları
+verir.
+
+| Profil kontrolü | Kamuya açık dayanak | Teknik değerlendirme amacı |
+|---|---|---|
+| `TR-TSE-TS13638-T2-QUALIFICATION` | TSE firma belgelendirme ön koşulları | Güncel firma belge numarası/seviyesi/kapsam/geçerliliği, görevlendirilen personel yeterlilik matrisi, uygulanabilir ISO belgesi/koşulu ve imzalı çalışma kayıtları |
+| `TR-TSE-TS13638-T2-PROCESS` | Lisanslı TS 13638/T2'nin güncel çalışma ve raporlama şartları | Yetkili standart nüshasının kimliği ve revizyonu ile insan onaylı madde-kanıt-istisna matrisi |
+| `TR-TSE-SIZMA-TESTI-KAPSAMI` | TSE sayfasından erişilen güncel “Sızma Testi Kapsamı” dokümanı | Onaylı kapsamın güncel TSE kapsamıyla karşılaştırılması; dahil, hariç ve uygulanamaz alanların gerekçeli kaydı |
+
+> [!IMPORTANT]
+> TSE, standardın temin edilmesini ve şartlarının karşılanmasını ister. FinRedOps
+> telifli/lisanslı standart metnini veya erişilemeyen madde numaralarını kopyalamaz
+> ve uydurmaz. Her çalışma için lisanslı nüshanın sürümü, erişim kaydı ve yetkili
+> uzman tarafından onaylanan madde matrisi kanıt olarak sağlanmalıdır. TSE firma
+> belgesi de tek başına düzenleyici uyum veya test sonucunun yeterliliğini kanıtlamaz.
+
+`tse_ts13638_in_scope` kararı otomatik çıkarılmaz. Kuruluşun sözleşmesi, test
+türü, düzenleyici beklentileri ve satın alma/denetim şartları dikkate alınarak
+yetkili insan tarafından `true`, `false` veya `null` olarak kaydedilir. `null`
+durumunda ilgili TSE kontrolleri `requires_confirmation` olur ve paket teslim
+kapısı fail-closed davranır.
+
 ## ISO/IEC 27001:2022
 
 Kaynaklar: [ISO/IEC 27001:2022](https://www.iso.org/standard/27001) ve
@@ -92,6 +126,8 @@ Kontrolün gerçek yorumu ve denetim kanıtı, kuruluşun lisanslı ISO/IEC 2700
 - Her kontrol için `conforms`, `partial`, `gap`, `not_applicable` veya
   `not_tested` sonucu kaydedilir.
 - `not_applicable` otomatik seçilmez; insan gerekçesi zorunludur.
+- BDDK, SPK, KVKK, TSE ve ISO kapsam kararları tarihli yetkili kişi kaydına
+  bağlanmadan denetim paketi teslimata hazır sayılmaz.
 - Uygulanabilir sonuç kanıt veya bulgu referansı olmadan geçerli sayılmaz.
 - Her bulgu en az bir kontrol ve erişim kontrollü kanıt URI'sine bağlanır.
 - Yüksek/kritik açık bulgu sorumlu ve hedef tarih olmadan rapor doğrulamasını

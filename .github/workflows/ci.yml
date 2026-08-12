@@ -43,6 +43,9 @@ jobs:
           python -m finredops verify-audit demo-output/audit.jsonl
           python -m finredops verify-store demo-output/finredops.db FRX-DEMO-2026-001
           python -m finredops validate-report demo-output/regulatory-report.json
+          python -m finredops validate-applicability demo-output/applicability.json
+          python -m finredops validate-evidence-manifest demo-output/evidence-manifest.json
+          python -m finredops verify-bundle demo-output/audit-dossier.zip
           python -m finredops render-report demo-output/regulatory-report.json --output demo-output/verified-report.md
           python -m finredops report-template --type vendor_source_code_review --output demo-output/vendor-source-template.json
           python -m finredops report-template --type vendor_application_penetration --output demo-output/vendor-app-template.json
