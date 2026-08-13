@@ -13,16 +13,16 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.8.1** keeps simulation as the safe default and preserves the
+> **Version 0.8.2** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision and report-issuance boundaries. It
-> extends the v0.8 institution-scoped persistence model with real application-
-> layer envelope encryption: every protected snapshot or audit row receives a
-> fresh AES-256-GCM data-encryption key (DEK), the DEK is wrapped through an
-> institution-owned KMS/HSM provider, and only ciphertext plus the wrapped DEK is
-> persisted. v0.8.1 also adds provider-backed signatures for audit-chain and
-> execution-receipt digests. The concrete AWS KMS adapter uses customer-managed
-> key references without exporting KMS key material; other KMS/HSM backends use
-> the provider-neutral interface and require separately reviewed adapters.
+> builds on v0.8.1 envelope encryption and KMS/HSM-backed evidence signatures by
+> adding authenticated application-layer tenant routing: a previously verified
+> OIDC subject/provider must have an exact, digest-bound institution grant before
+> FinRedOps creates a tenant authorization. That authorization is also bound to
+> the current institution security-context digest and a closed capability set.
+> Stored authorizations are revalidated against the source OIDC verification,
+> current policy and current institution context before use. Database-native
+> row-level security remains a separate production persistence milestone.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -64,7 +64,10 @@ flowchart TD
     R --> M["Trusted draft-report promotion"]
     M --> P["Two signed report approvers"]
     P --> Q["Approved, not automatically issued"]
-    S["Institution-scoped persistence"] --> H
+    O --> W["Exact-subject tenant routing policy"]
+    W --> X["Digest-bound tenant authorization"]
+    X --> S["Institution-scoped persistence"]
+    S --> H
     T["Fresh AES-256-GCM DEK + institution KMS/HSM"] --> S
     H --> U["KMS/HSM-backed audit signature"]
     G --> V["KMS/HSM-backed receipt signature"]
@@ -123,7 +126,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.8.1 behavior |
+| Boundary | v0.8.2 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -143,12 +146,14 @@ sources.
 | Approval trust roots | Dedicated public-key bundle; reviewer keys cannot authorize business risk or report approval |
 | Report approval | Exactly two distinct `report_approver` signatures bound to source draft digest + trusted-promotion digest |
 | Tenant persistence | Store handle binds one institution; snapshots/audit/idempotency use institution-scoped composite keys |
+| Authenticated tenant routing | Verified OIDC provider + exact subject grant + current policy/context digests + closed capabilities; stored authorization is revalidated before use |
+| Authorized store writes | `store_write` capability plus institution crypto provider required, preventing silent plaintext bypass of v0.8.1 protection |
 | Institution envelope encryption | Fresh per-record AES-256-GCM DEK; DEK wrapped by matching institution KMS/HSM provider; tenant/object context authenticated |
 | Key-backed evidence | Audit-chain and execution-receipt digests can be signed/verified through the institution `audit_signing` key |
 | Concrete KMS adapter | AWS KMS `Encrypt`/`Decrypt` + `Sign`/`Verify`; AWS credentials/key policy remain outside FinRedOps |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, tenant verification, promotion and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, authenticated tenant routing, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only hash chain, optional provider-backed signatures and offline-verifiable artifacts |
@@ -421,8 +426,9 @@ finredops verify-tenant-store \
   --institution-id bank-a
 ```
 
-Authenticated tenant routing and database-engine row-level security remain
-separate production-hardening milestones.
+Tenant namespaces are now supplemented by the authenticated v0.8.2 routing
+boundary below. Database-engine row-level security remains a separate
+production-hardening milestone.
 
 See **[Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)**
 for migration behavior, key custody references, security properties and explicit
@@ -463,6 +469,50 @@ all have built-in v0.8.1 adapters. See
 **[Institution-owned KMS/HSM envelope encryption and evidence signatures](docs/KMS_ENVELOPE_SIGNING.md)**
 for the cryptographic model, rotation semantics and explicit limitations.
 
+## v0.8.2 authenticated tenant routing and authorization
+
+v0.8.2 consumes the minimized v0.7.2 OIDC verification artifact and an explicit
+institution routing policy. One policy binds one OIDC provider to one institution
+and contains exact-subject grants; wildcards and implicit membership are not
+supported. Requested access is limited to the closed capability set
+`store_read`, `store_write`, `audit_verify`, and `crypto_use`.
+
+Create a conservative policy template, authorize a route, and revalidate it:
+
+```bash
+finredops tenant-routing-policy-template \
+  --institution-context institution-security-context.json \
+  --oidc-verification oidc-verification.json \
+  --output tenant-routing-policy.json
+
+finredops authorize-tenant-route \
+  --policy tenant-routing-policy.json \
+  --institution-context institution-security-context.json \
+  --oidc-verification oidc-verification.json \
+  --capability store_read \
+  --capability audit_verify \
+  --as-of 2026-08-13T10:00:00Z \
+  --output tenant-authorization.json
+
+finredops verify-tenant-authorization \
+  --authorization tenant-authorization.json \
+  --policy tenant-routing-policy.json \
+  --institution-context institution-security-context.json \
+  --oidc-verification oidc-verification.json \
+  --as-of 2026-08-13T10:15:00Z
+```
+
+The authorization binds the exact OIDC verification digest, policy digest,
+current institution-context digest, effective role intersection and capability
+subset. It expires with the source identity. A saved authorization is not trusted
+alone: current source artifacts are required again. The authorized store session
+derives the institution namespace from those validated bindings, and writes
+require the institution cryptographic provider so the envelope-encryption path
+cannot be silently bypassed.
+
+See **[Authenticated tenant routing and authorization](docs/TENANT_AUTHORIZATION.md)**
+for the full policy model, fail-closed rules and production non-claims.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
 The synthetic engagement, plan, and SARIF input ship as package data. A source
@@ -501,7 +551,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.8.1-py3-none-any.whl \
+gh attestation verify finredops-0.8.2-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -548,6 +598,8 @@ src/finredops/
   signed_approval_cli.py  v0.7.1 signed approval operator commands
   oidc_identity.py        offline OIDC/JWKS verification and signed-identity binding
   oidc_cli.py             v0.7.2 external-IdP operator commands
+  tenant_auth.py          exact-subject authenticated tenant authorization and store session
+  tenant_auth_cli.py      v0.8.2 tenant routing policy/authorization commands
   institution.py          institution security context and opaque KMS/HSM references
   crypto_provider.py      provider-neutral KMS/HSM wrap/unwrap/sign/verify boundary
   aws_kms.py              AWS KMS production adapter
@@ -556,7 +608,7 @@ src/finredops/
   hardening_cli.py        v0.8 tenant/key-boundary operator commands
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
-  entrypoint.py           top-level legacy/operator/trust/approval/OIDC/hardening router
+  entrypoint.py           top-level operator/trust/approval/OIDC/tenant/hardening router
   release_integrity.py    packaged examples and strict local checksum verification
   examples/               installed-wheel synthetic engagement, plan, and SARIF
   evidence.py             sensitive-data minimization boundary
@@ -572,21 +624,21 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned data contracts, including reviewer, approval, OIDC, institution, envelope and evidence-signature contracts
+schemas/                  versioned data contracts, including reviewer, approval, OIDC, tenant authorization, institution, envelope and evidence-signature contracts
 docs/                     architecture, safety, assurance, operator, release, trust and hardening workflow
 examples/                 source-tree synthetic reserved-namespace inputs
-tests/                    policy, integrity, trust, approval, OIDC, tenant, KMS/envelope, packaging and end-to-end tests
+tests/                    policy, integrity, trust, approval, OIDC, tenant authorization, KMS/envelope, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
 
 FinRedOps demonstrates technical patterns that can support governed security
 testing. Hash chaining alone provides **tamper evidence**, not non-repudiation.
-SQLite provides institution-scoped namespaces through the FinRedOps store API,
-but it is still demonstration persistence rather than an authenticated
-production multi-tenant system of record. Tenant scope does not by itself imply
-database-engine row-level security or tenant authorization. Regulatory mappings
-do not establish legal applicability, certification, or compliance.
+SQLite remains demonstration persistence rather than a production multi-tenant
+system of record. v0.8.2 adds an authenticated application-layer route before
+the store, but this does not become database-engine row-level security merely
+because the application performed an authorization check. Regulatory mappings do
+not establish legal applicability, certification, or compliance.
 
 Release checksum validation establishes local byte integrity relative to the
 supplied manifest; it does not establish build origin. GitHub/Sigstore artifact
@@ -609,8 +661,15 @@ adapter is built in; other KMS/HSM families require separate adapter
 implementations. FinRedOps does not claim that a configured key reference proves
 correct IAM/key policy, does not create/export institution keys, cannot guarantee
 zeroization of every transient Python byte copy, and does not yet provide
-external immutable audit anchoring. FinRedOps also does not automatically issue,
-deliver or submit an approved report.
+external immutable audit anchoring.
+
+v0.8.2 authorizes one verified OIDC subject/provider to one institution through a
+digest-bound routing policy and closed capability set. It rejects stale policy or
+institution context, cross-tenant/provider/subject replay and capability
+escalation. It does **not** provide database-native RLS, API-gateway
+authentication, SCIM/group synchronization, or independently signed routing
+policy change approval. FinRedOps also does not automatically issue, deliver or
+submit an approved report.
 
 ## Reference baseline
 
@@ -645,6 +704,7 @@ Key documentation:
 - [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
 - [Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)
 - [Institution-owned KMS/HSM envelope encryption and evidence signatures](docs/KMS_ENVELOPE_SIGNING.md)
+- [Authenticated tenant routing and authorization](docs/TENANT_AUTHORIZATION.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)
