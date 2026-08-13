@@ -71,13 +71,10 @@ class LivePostgresRLSTests(unittest.TestCase):
                 ("frx_a_writer", "frx-a-writer-test"),
                 ("frx_b_writer", "frx-b-writer-test"),
             ):
+                cursor.execute(f"DROP ROLE IF EXISTS {role}")
                 cursor.execute(
-                    f"DROP ROLE IF EXISTS {role}"
-                )
-                cursor.execute(
-                    f"CREATE ROLE {role} LOGIN PASSWORD %s "
-                    "NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS",
-                    (password,),
+                    f"CREATE ROLE {role} LOGIN PASSWORD '{password}' "
+                    "NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS"
                 )
             cursor.execute(
                 cls.contract.register_service_account_sql(
@@ -152,16 +149,12 @@ class LivePostgresRLSTests(unittest.TestCase):
 
         with self._session(self.b_writer_dsn, "bank-b", "write") as writer_b:
             with writer_b.connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT count(*) FROM finredops_secure.idempotency_records"
-                )
+                cursor.execute("SELECT count(*) FROM finredops_secure.idempotency_records")
                 self.assertEqual(cursor.fetchone()[0], 0)
 
         with self._session(self.a_reader_dsn, "bank-a", "read") as reader_a:
             with reader_a.connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT count(*) FROM finredops_secure.idempotency_records"
-                )
+                cursor.execute("SELECT count(*) FROM finredops_secure.idempotency_records")
                 self.assertGreaterEqual(cursor.fetchone()[0], 1)
                 with self.assertRaises(self.psycopg.Error):
                     cursor.execute(
@@ -186,7 +179,10 @@ class LivePostgresRLSTests(unittest.TestCase):
             first = store.save_snapshot(snapshot, now=NOW)
             duplicate = store.save_snapshot(snapshot, now=NOW)
             self.assertEqual(first.revision, duplicate.revision)
-            self.assertEqual(store.persist_audit_chain(engagement_id, service.audit), len(service.audit.events))
+            self.assertEqual(
+                store.persist_audit_chain(engagement_id, service.audit),
+                len(service.audit.events),
+            )
             self.assertTrue(
                 store.record_idempotency(
                     "postgres-request-0001",
