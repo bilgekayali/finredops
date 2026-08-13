@@ -26,6 +26,7 @@ class PostgresContractTests(unittest.TestCase):
         self.assertIn("protection_mode = 'envelope_v1'", sql)
         self.assertNotIn("set_config(", sql.lower())
         self.assertNotIn("current_setting(", sql.lower())
+        self.assertTrue(contract.as_dict()["runtime_roles_require_no_privileged_set_role_path"])
         self.assertEqual(len(contract.as_dict()["contract_digest"]), 64)
 
     def test_service_mapping_requires_existing_safe_login_role(self) -> None:
@@ -37,6 +38,8 @@ class PostgresContractTests(unittest.TestCase):
         )
         self.assertIn("NOT rolcanlogin", sql)
         self.assertIn("rolbypassrls", sql)
+        self.assertIn("pg_has_role", sql)
+        self.assertIn("'SET'", sql)
         self.assertIn("GRANT \"finredops_writer\" TO \"bank_a_writer\"", sql)
         self.assertIn("'bank-a'", sql)
         with self.assertRaises(ValueError):
@@ -130,6 +133,7 @@ class LivePostgresRLSTests(unittest.TestCase):
             assessment = writer_a.assessment.as_dict()
             self.assertTrue(assessment["database_rls_verified"])
             self.assertTrue(assessment["service_account_isolation_verified"])
+            self.assertTrue(assessment["privileged_set_role_path_verified_absent"])
             self.assertEqual(assessment["institution_id"], "bank-a")
             with writer_a.connection.cursor() as cursor:
                 cursor.execute(
@@ -163,6 +167,25 @@ class LivePostgresRLSTests(unittest.TestCase):
                            VALUES ('bank-a', 'reader-write-denied-01', %s, %s, %s)""",
                         ("e" * 64, "f" * 64, NOW),
                     )
+
+    def test_privileged_set_role_path_is_rejected(self) -> None:
+        with self.admin.cursor() as cursor:
+            cursor.execute("DROP ROLE IF EXISTS frx_test_bypass")
+            cursor.execute(
+                "CREATE ROLE frx_test_bypass NOLOGIN NOSUPERUSER BYPASSRLS"
+            )
+            cursor.execute("GRANT frx_test_bypass TO frx_a_reader")
+            cursor.execute(
+                "SELECT pg_has_role('frx_a_reader', 'frx_test_bypass', 'SET')"
+            )
+            self.assertTrue(cursor.fetchone()[0])
+        try:
+            with self.assertRaises(PostgresSecurityError):
+                self._session(self.a_reader_dsn, "bank-a", "read")
+        finally:
+            with self.admin.cursor() as cursor:
+                cursor.execute("REVOKE frx_test_bypass FROM frx_a_reader")
+                cursor.execute("DROP ROLE frx_test_bypass")
 
     def test_verified_store_is_encrypted_and_tenant_scoped(self) -> None:
         provider = MemoryInstitutionProvider()
