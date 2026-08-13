@@ -32,6 +32,8 @@ jobs:
           python -m compileall -q src tests
           python -m finredops --help | grep -q "promote-reviewed-report"
           python -m finredops --help | grep -q "verify-release-checksums"
+          python -m finredops --help | grep -q "verify-review-trust"
+          python -m finredops --help | grep -q "promote-trusted-reviewed-report"
           python -m finredops validate-engagement examples/synthetic_engagement.json
           python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
           python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
@@ -141,11 +143,12 @@ jobs:
           python -m pip install build
           python -m build
 
-      - name: Install wheel in a clean environment
+      - name: Install wheel with declared runtime dependencies in a clean environment
         run: |
           python -m venv /tmp/finredops-wheel
-          /tmp/finredops-wheel/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/finredops-wheel/bin/python -m pip install dist/*.whl
           /tmp/finredops-wheel/bin/finredops --help | grep -q "export-examples"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-review-trust"
 
       - name: Verify packaged examples and bundled demo
         run: |

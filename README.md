@@ -13,12 +13,14 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.6.1** keeps simulation as the safe default and preserves the
-> bounded v0.4 active-validation boundary. It adds release-integrity controls
-> around the v0.6 end-to-end operator workflow: packaged synthetic examples,
-> clean-wheel smoke testing, SHA-256 release verification, version-tag binding,
-> and GitHub/Sigstore build provenance. Report issuance and human approval
-> remain outside automation.
+> **Version 0.7.0** keeps simulation as the safe default and preserves the
+> bounded active-validation and draft-report boundaries. It adds a verification-only
+> reviewer trust layer: externally signed Ed25519 identity assertions are bound
+> to engagement, intake, finding and immutable review/lifecycle digests; signed
+> supersession and revocation preserve history while deterministic resolution
+> selects the current authoritative review. FinRedOps does not store reviewer
+> private keys, and OIDC/JWKS authentication remains a separate roadmap item.
+> Report issuance and final human approval remain outside automation.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -53,8 +55,9 @@ flowchart TD
     G --> H
     I["Untrusted SARIF"] --> J["Bounded intake + deduplication"]
     J --> K["Qualified human review"]
-    K --> L["Explicit draft-report promotion"]
-    L --> M["Validated draft report"]
+    K --> L["Signed reviewer identity assertion"]
+    L --> N["Authoritative review resolution"]
+    N --> M["Explicit draft-report promotion"]
 ```
 
 ## Regulatory & security assurance coverage
@@ -88,6 +91,8 @@ The intended assurance chain is:
 security evidence
     -> bounded normalization
     -> qualified human disposition
+    -> signed identity + engagement binding
+    -> authoritative review lifecycle resolution
     -> technical + business impact
     -> regulatory / standard / requirement references
     -> human-confirmed applicability
@@ -106,7 +111,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.6.1 behavior |
+| Boundary | v0.7 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -117,10 +122,13 @@ sources.
 | Evidence handling | Deterministic minimization and redaction of likely sensitive identifiers |
 | Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
 | Finding disposition | Qualified-tester decision with evidence, final severity, impact, recommendation, and control mapping |
-| Risk acceptance | Separate business risk owner with compensating controls and expiry |
+| Reviewer identity | External Ed25519 assertion verification; subject/role bound to engagement, intake, finding and immutable review digest |
+| Review lifecycle | Signed `review_governor` supersession/revocation; history is preserved and parallel/orphan/cyclic chains fail closed |
+| Authoritative review | Trusted promotion receives only the current cryptographically verified review for each finding |
+| Risk acceptance | Separate business risk owner with compensating controls and expiry; key-backed signature is still roadmap work |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, report-spec templates, promotion, and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, report-spec templates, trust verification, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only hash chain and offline-verifiable artifacts |
@@ -211,10 +219,70 @@ finredops render-report work/reviewed-report/regulatory-report.json \
 For the complete sequence, see
 **[v0.6 Operator Workflow](docs/OPERATOR_WORKFLOW.md)**.
 
+## v0.7 signed reviewer trust and lifecycle
+
+v0.7 adds cryptographic identity binding **without putting private keys inside
+FinRedOps**. A qualified review or lifecycle event receives a short-lived,
+externally produced Ed25519 signature assertion. FinRedOps verifies that
+assertion against a configured public-key trust bundle and binds it to the exact
+engagement, intake batch, finding and immutable object digest.
+
+Create an external signing request for a finalized review:
+
+```bash
+finredops identity-assertion-request \
+  --intake work/finding-intake.json \
+  --review work/review.json \
+  --engagement-id FRX-ENGAGEMENT-001 \
+  --issuer idp.example-bank.test \
+  --key-id reviewer-key-2026 \
+  --issued-at 2026-08-13T09:00:00Z \
+  --expires-at 2026-08-13T10:00:00Z \
+  --output work/review-signing-request.json
+```
+
+The external signer returns an Ed25519 signature; FinRedOps attaches it with
+`finalize-identity-assertion`, then verifies it only when the protected review,
+trust bundle and engagement context are supplied.
+
+Review decisions are never edited in place. A separately signed
+`review_governor` lifecycle event can `supersede` an old review with a new one or
+`revoke` it without deleting history. `verify-review-trust` rejects invalid
+signatures, engagement replay, role/subject mismatch, digest tampering, cycles,
+branches and orphan histories.
+
+```bash
+finredops verify-review-trust \
+  --intake work/finding-intake.json \
+  --review work/review-a.json \
+  --review work/review-b.json \
+  --lifecycle-event work/lifecycle-event.json \
+  --identity-assertion work/review-a.assertion.json \
+  --identity-assertion work/review-b.assertion.json \
+  --identity-assertion work/lifecycle.assertion.json \
+  --trust-bundle trust/reviewer-trust.json \
+  --engagement-id FRX-ENGAGEMENT-001 \
+  --as-of 2026-08-13T10:30:00Z
+```
+
+`promote-trusted-reviewed-report` performs the same trust resolution before
+calling the existing draft-report promotion boundary. Only current authoritative
+signed reviews are passed forward. The output additionally includes
+`trust-resolution.json` and `trusted-promotion-manifest.json`; the report remains
+`draft` and cannot be issued automatically.
+
+This release verifies provider-neutral signed identity assertions, but it does
+**not** yet validate OIDC/JWKS, SAML, MFA, device-posture or institutional
+directory session claims. That distinction is explicit in trust-resolution
+artifacts as `external_idp_protocol_verified: false`.
+
+See **[Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)**
+for the trust boundary, signing contract, fail-closed rules and lifecycle model.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
-v0.6.1 ships the synthetic engagement, plan, and SARIF input as package data.
-A source checkout is no longer required for the reviewed-report demo:
+The synthetic engagement, plan, and SARIF input ship as package data. A source
+checkout is not required for the reviewed-report demo:
 
 ```bash
 finredops export-examples --output-dir finredops-examples
@@ -229,11 +297,11 @@ The demo creates canonical intake, two finalized synthetic reviews, one promoted
 finding, a draft JSON/Markdown report, and a promotion manifest. No live target
 is contacted.
 
-## v0.6.1 release integrity and provenance
+## Release integrity and provenance
 
 Tagged releases build a wheel and source distribution, smoke-test the installed
-wheel in a clean environment, generate a `CHECKSUMS.sha256` manifest, and create
-GitHub/Sigstore artifact provenance.
+wheel in a clean environment with declared runtime dependencies, generate a
+`CHECKSUMS.sha256` manifest, and create GitHub/Sigstore artifact provenance.
 
 Local checksum verification:
 
@@ -249,7 +317,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.6.1-py3-none-any.whl \
+gh attestation verify finredops-0.7.0-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -288,8 +356,11 @@ src/finredops/
   validation.py        optional bounded active validation
   intake.py            bounded SARIF parser and canonical candidates
   review.py            qualified disposition and role-separated risk acceptance
+  trust.py             Ed25519 identity verification and authoritative review lifecycle
+  trust_cli.py         v0.7 trust/lifecycle operator commands
   promotion.py         explicit reviewed-finding to draft-report boundary
-  operator_cli.py      unified operator workflow and release-integrity commands
+  operator_cli.py      reviewed-report and release-integrity commands
+  entrypoint.py        top-level legacy/operator/trust command router
   release_integrity.py packaged examples and strict local checksum verification
   examples/            installed-wheel synthetic engagement, plan, and SARIF
   evidence.py          sensitive-data minimization boundary
@@ -298,17 +369,17 @@ src/finredops/
   store.py             transactional SQLite revisions and audit persistence
   service.py           engagement and approval state machine
   profiles.py          financial-institution preflight policy
-  regulations.py      versioned Turkish regulatory control registry
+  regulations.py       versioned Turkish regulatory control registry
   applicability.py     human-confirmed regulatory/standards scope
   reporting.py         audit-support validation, crosswalk, and renderer
   diffing.py           report revision and remediation delta
   bundle.py            deterministic audit dossier builder and verifier
   api.py               loopback-first read-only API
   dashboard.py         self-contained operations interface
-schemas/               versioned data contracts
-docs/                  architecture, safety, assurance, operator, and release workflow
+schemas/               versioned data contracts, including reviewer trust/lifecycle
+docs/                  architecture, safety, assurance, operator, release and trust workflow
 examples/              source-tree synthetic reserved-namespace inputs
-tests/                 policy, integrity, boundary, packaging, and end-to-end tests
+tests/                 policy, integrity, trust, boundary, packaging, and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -324,7 +395,11 @@ by authorized humans.
 Release checksum validation establishes local byte integrity relative to the
 supplied manifest; it does not establish build origin. GitHub/Sigstore artifact
 attestations address build provenance only when the consumer verifies them.
-Neither mechanism authenticates reviewers or report approvers.
+The v0.7 trust layer separately verifies Ed25519 reviewer/lifecycle assertions
+against configured public keys and exact engagement/object bindings. It does not
+yet prove that an upstream OIDC/JWKS, SAML, MFA or institutional-directory
+authentication ceremony occurred, and it does not yet cryptographically sign
+business risk acceptance or final report approvals.
 
 ## Reference baseline
 
@@ -344,11 +419,12 @@ The design and analysis model are informed by, but do not claim conformance with
 - [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
 - [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
 - [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
-- [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)
+- [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif-v2.1.0/os/sarif-v2.1.0-os.html)
 
 Key documentation:
 
 - [Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)
+- [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)

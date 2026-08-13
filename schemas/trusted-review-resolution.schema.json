@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/trusted-review-resolution.schema.json",
+  "title": "FinRedOps Trusted Review Resolution v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "engagement_id", "trust_bundle_digest",
+    "authoritative_review_ids", "revoked_finding_ids", "verified_assertion_ids",
+    "lifecycle_event_ids", "cryptographic_signatures_verified",
+    "signature_algorithm", "external_idp_protocol_verified", "resolution_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.trusted-review-resolution.v1"},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "trust_bundle_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "authoritative_review_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^FRX-REV-[A-F0-9]{24}$"}
+    },
+    "revoked_finding_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "verified_assertion_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^FRX-IDN-[A-F0-9]{24}$"}
+    },
+    "lifecycle_event_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^FRX-RLC-[A-F0-9]{24}$"}
+    },
+    "cryptographic_signatures_verified": {"const": true},
+    "signature_algorithm": {"const": "Ed25519"},
+    "external_idp_protocol_verified": {"const": false},
+    "resolution_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
