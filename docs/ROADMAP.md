@@ -154,6 +154,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] KMS/HSM-backed audit-chain and receipt signatures;
 - [x] authenticated tenant routing and authorization boundary above the local store;
 - [x] database-engine row-level security for the PostgreSQL production persistence backend;
+- [x] independent signed change control for tenant policy and service-account mappings;
 
 ## v0.8.1 — KMS/HSM envelope encryption and signed evidence
 
@@ -188,7 +189,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] strict tenant-routing-policy and tenant-authorization JSON schemas;
 - [x] CI boundary prevents token parsing/network capabilities from entering the tenant authorization module;
 - [x] database-native row-level security and service-account isolation for the PostgreSQL production persistence backend;
-- [ ] signed routing-policy bundles with independent configuration-change approval;
+- [x] signed routing-policy bundles with independent configuration-change approval via v0.8.4;
 
 ## v0.8.3 — PostgreSQL RLS and service-account isolation
 
@@ -204,7 +205,82 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] PostgreSQL persistence requires v0.8.1 institution-owned envelope encryption for protected payloads;
 - [x] PostgreSQL runtime assessment and installation-contract JSON schemas plus operator CLI;
 - [x] live PostgreSQL 17 CI verifies cross-tenant denial, reader/write separation and encrypted persistence;
-- [ ] signed routing-policy and service-account mapping changes with independent approval;
+- [x] signed routing-policy and service-account mapping changes with independent approval via v0.8.4;
+
+## v0.8.4 — signed configuration change control
+
+- [x] dedicated configuration-change trust bundle separated from reviewer, risk-owner and report-approval roots;
+- [x] trust keys pin issuer, subject, role, Ed25519 public key and validity window;
+- [x] one public key cannot be reused under multiple change-control trust identities;
+- [x] exact change request binds institution, operation, object, prior/target state digests, context, requester, rationale and approval window;
+- [x] exactly two signatures required: one `configuration_governor` and one `security_governor`;
+- [x] approvers must use distinct key identities, public-key material and trust-pinned subjects;
+- [x] approved change package records the exact trust-bundle digest and reproducible approval-time resolution;
+- [x] tenant authorization/verification CLI requires a package covering the exact routing-policy and institution-context digests;
+- [x] PostgreSQL mapping/disable SQL CLI requires a package covering the exact role, institution, access/state and RLS-contract digest;
+- [x] create/update/disable transitions fail closed when prior/target state semantics are incomplete or stale;
+- [x] versioned trust, request, signature, resolution, package and PostgreSQL mapping-intent JSON contracts;
+- [x] change-control implementation remains verification-only and stores no approver private keys;
+
+## Path to v1.0
+
+FinRedOps will not use `1.0.0` as a cosmetic version bump. v1 is the first
+production-reference release after the following security and operating gates are
+implemented, tested, documented and reviewed.
+
+### v0.8.5 — immutable external audit anchoring
+
+- [ ] publish signed audit-head commitments to an append-only external anchoring boundary;
+- [ ] bind anchor identity, institution, audit head, event count, timestamp and source artifact digest;
+- [ ] verify anchor receipt independently from the local database and KMS/HSM evidence;
+- [ ] fail closed on reordered, stale, missing or cross-institution anchor receipts;
+- [ ] keep anchoring independent from report issuance and active security-testing authority.
+
+### v0.9.0 — evidence vault lifecycle
+
+- [ ] institution-scoped encrypted evidence-vault interface;
+- [ ] retention schedules and immutable legal-hold state;
+- [ ] deletion eligibility separated from destructive deletion execution;
+- [ ] custody events for ingest, access, export, hold, release and deletion approval;
+- [ ] recovery/restore semantics that preserve tenant, encryption and custody boundaries.
+
+### v0.9.1 — assurance completeness
+
+- [ ] CycloneDX 1.7 SBOM and vulnerability intake;
+- [ ] CVSS 4.0 vector parsing/validation separated from financial business impact;
+- [ ] versioned OWASP ASVS 5.0.0 requirement coverage;
+- [ ] deterministic linkage of these evidence sources into qualified human review and audit dossiers;
+- [ ] keep regulatory applicability human-confirmed and non-certifying.
+
+### v0.9.2 — isolated workload execution
+
+- [ ] isolated signed worker with institution-owned workload identity;
+- [ ] authenticated one-time test-account / authorization-boundary modules;
+- [ ] strict egress allowlisting and workload-to-engagement binding;
+- [ ] signed worker receipts and emergency-stop verification;
+- [ ] active capability remains bounded, non-production and separately approved.
+
+### v0.9.3 — release-candidate hardening
+
+- [ ] upgrade/downgrade and migration tests for persisted schemas and security artifacts;
+- [ ] failure-recovery and partial-transaction runbooks;
+- [ ] backup/restore boundary review for encrypted tenant persistence and evidence lifecycle;
+- [ ] updated threat model covering the complete production reference architecture;
+- [ ] dependency, packaging and release-provenance security review;
+- [ ] operator deployment, key-rotation, incident and disaster-recovery runbooks.
+
+### v1.0.0 — production-ready reference release gate
+
+v1.0.0 is cut only when all preceding release gates are complete and the release
+candidate additionally has:
+
+- [ ] documented public API and JSON-schema compatibility/versioning policy;
+- [ ] end-to-end production reference deployment using authenticated identity, tenant routing, PostgreSQL RLS, institution-owned cryptography, change control, audit anchoring and evidence lifecycle;
+- [ ] reproducible release checksums plus repository/build provenance verification;
+- [ ] supported upgrade path from the final v0.9.x release with rollback/failure guidance;
+- [ ] independent security review checklist closed or explicitly risk-accepted;
+- [ ] independent legal and accessibility review checklist closed or explicitly scoped as deployment-owner responsibilities;
+- [ ] explicit v1 non-claims preserving the governed/non-autonomous testing boundary.
 
 ## Platform hardening
 
@@ -215,9 +291,9 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] key-backed audit and receipt signatures;
 - [x] authenticated application-layer tenant routing and capability authorization;
 - [x] PostgreSQL database-engine RLS and service-account production boundary;
+- [x] policy bundle signatures and independent change approval;
 - [ ] immutable external audit anchoring;
 - [ ] evidence-vault integration, retention, legal hold and deletion policy;
-- [ ] policy bundle signatures and independent change approval;
 - [ ] independent legal, accessibility and security review.
 
 ## Later — separately reviewed advanced modules
