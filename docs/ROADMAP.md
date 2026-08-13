@@ -139,11 +139,29 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] no autonomous discovery or JWKS network retrieval in the verification path;
 - [x] versioned provider, verification, binding and workflow-resolution JSON contracts;
 
+## v0.8 — tenant and institution key boundaries
+
+- [x] SQLite schema v2 scopes snapshots by `(institution_id, engagement_id, revision)`;
+- [x] audit events are institution-scoped and reject engagement-label mismatch;
+- [x] idempotency keys are institution-scoped so identical keys may be used independently by different tenants;
+- [x] store handles bind one institution id and do not accept per-operation tenant overrides;
+- [x] schema-v1 databases migrate transactionally into the explicit `default` institution;
+- [x] provider-neutral institution security context with digest-bound opaque KMS/HSM key references;
+- [x] private key material is rejected from institution key-reference configuration;
+- [x] CLI exposes institution context validation and tenant-scoped audit verification;
+- [x] metadata explicitly distinguishes tenant-scope enforcement from encryption-at-rest verification;
+- [ ] institution-owned envelope encryption through a reviewed KMS/HSM provider interface;
+- [ ] HSM/KMS-backed audit-chain and receipt signatures;
+- [ ] authenticated tenant routing and authorization boundary above the local store;
+- [ ] database-engine row-level security for a production persistence backend;
+
 ## Platform hardening
 
 - [x] signed identities using an authenticated external identity-provider protocol;
-- [ ] tenant isolation and institution-owned encryption keys;
-- [ ] key-backed approval and receipt signatures;
+- [x] institution-scoped persistence namespace and cross-tenant collision isolation baseline;
+- [x] institution-owned encryption/signing key-reference contract with no secret material;
+- [ ] institution-owned envelope encryption through KMS/HSM;
+- [ ] key-backed audit and receipt signatures;
 - [ ] immutable external audit anchoring;
 - [ ] evidence-vault integration, retention, legal hold and deletion policy;
 - [ ] policy bundle signatures and independent change approval;
