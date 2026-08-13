@@ -60,8 +60,8 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] digest-bound qualified-tester disposition and rationale workflow;
 - [x] role-separated, evidence-linked and time-bounded business risk acceptance;
 - [x] deterministic queue summary with active/expired acceptance state;
-- [ ] authenticated and cryptographically signed reviewer identities;
-- [ ] engagement/authorization binding plus review supersession and revocation;
+- [x] cryptographically signed reviewer identity assertions with provider-neutral trust bundles;
+- [x] engagement/intake binding plus review supersession and revocation;
 - [ ] CVSS 4.0 vector validation with separate financial business impact;
 - [ ] versioned OWASP ASVS 5.0.0 requirement coverage;
 - [x] controlled promotion from confirmed candidates into draft reports;
@@ -92,16 +92,30 @@ Roadmap items remain subject to the safety boundary and institutional review.
 
 ## v0.7 — trust and identity
 
-- [ ] authenticated reviewer identity assertions from an external identity provider;
-- [ ] cryptographic binding of reviewer identity to engagement, intake and decision digest;
-- [ ] review supersession and revocation without deleting historical decisions;
-- [ ] current-authoritative-review resolution for report promotion;
+- [x] externally signed Ed25519 reviewer identity assertions using a configured public-key trust bundle;
+- [x] cryptographic binding of reviewer identity to engagement, intake, finding and immutable review digest;
+- [x] signed review-governor supersession and revocation without deleting historical decisions;
+- [x] current-authoritative-review resolution for trusted report promotion;
+- [x] signature-verification evidence exposed through CLI, trust resolution and trusted-promotion outputs;
+- [ ] OIDC/JWKS adapter for authenticated external identity-provider sessions and claims;
 - [ ] key-backed report approval and risk-acceptance signatures;
-- [ ] signature verification evidence exposed through CLI and audit-support outputs;
+
+## v0.7.0 — signed review trust and lifecycle
+
+- [x] Ed25519 verification-only trust layer; FinRedOps never stores reviewer private keys;
+- [x] short-lived assertion binding to issuer, subject, role, engagement, intake, finding and object digest;
+- [x] separate `qualified_tester` and `review_governor` trust roles;
+- [x] immutable `supersede` / `revoke` review lifecycle events;
+- [x] fail-closed rejection of signature tampering, replay, role mismatch, cycles, branches and orphan review history;
+- [x] trusted promotion uses only current authoritative signed reviews and remains draft-only;
+- [x] versioned trust-bundle, identity-assertion, lifecycle-event and trust-resolution JSON contracts;
+- [x] Python 3.11/3.12/3.13 regression coverage plus installed-wheel verification;
+- [ ] upstream OIDC/JWKS/SAML authentication protocol verification;
+- [ ] signed business risk acceptance and final report approvals;
 
 ## Platform hardening
 
-- [ ] signed identities using an external identity provider;
+- [ ] signed identities using an authenticated external identity-provider protocol;
 - [ ] tenant isolation and institution-owned encryption keys;
 - [ ] key-backed approval and receipt signatures;
 - [ ] immutable external audit anchoring;
