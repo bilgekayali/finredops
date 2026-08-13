@@ -38,6 +38,9 @@ jobs:
           python -m finredops --help | grep -q "approve-trusted-report"
           python -m finredops --help | grep -q "verify-oidc-id-token"
           python -m finredops --help | grep -q "verify-oidc-workflow-bindings"
+          python -m finredops --help | grep -q "tenant-policy-change-request"
+          python -m finredops --help | grep -q "resolve-change-control"
+          python -m finredops --help | grep -q "verify-change-control"
           python -m finredops --help | grep -q "authorize-tenant-route"
           python -m finredops --help | grep -q "verify-tenant-authorization"
           python -m finredops --help | grep -q "authorized-tenant-store-metadata"
@@ -144,6 +147,37 @@ jobs:
               raise SystemExit(f"OIDC verifier imports forbidden network capability: {unexpected}")
           PY
 
+      - name: Enforce signed change-control verification-only boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          for source_path in (
+              Path("src/finredops/change_control.py"),
+              Path("src/finredops/change_control_cli.py"),
+          ):
+              tree = ast.parse(source_path.read_text(encoding="utf-8"))
+              forbidden = {"asyncio", "http", "jwt", "requests", "socket", "subprocess", "urllib"}
+              imported = set()
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      imported.update(alias.name.split(".")[0] for alias in node.names)
+                  elif isinstance(node, ast.ImportFrom):
+                      imported.add((node.module or "").split(".")[0])
+              unexpected = sorted(imported & forbidden)
+              if unexpected:
+                  raise SystemExit(
+                      f"change-control verification imports forbidden capability in {source_path}: {unexpected}"
+                  )
+          tenant_cli = Path("src/finredops/tenant_auth_cli.py").read_text(encoding="utf-8")
+          postgres_cli = Path("src/finredops/postgres_cli.py").read_text(encoding="utf-8")
+          if "verify_tenant_policy_change_package" not in tenant_cli:
+              raise SystemExit("tenant CLI must enforce approved routing-policy change package")
+          if "verify_postgres_mapping_change_package" not in postgres_cli:
+              raise SystemExit("PostgreSQL CLI must enforce approved service-account mapping package")
+          PY
+
       - name: Enforce tenant authorization no-network and no-token parsing boundary
         run: |
           python - <<'PY'
@@ -248,6 +282,8 @@ jobs:
           /tmp/finredops-wheel/bin/finredops --help | grep -q "approve-trusted-report"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-oidc-id-token"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-oidc-workflow-bindings"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "resolve-change-control"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-change-control"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "authorize-tenant-route"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-tenant-authorization"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "postgres-rls-install-sql"

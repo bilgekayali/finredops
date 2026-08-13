@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/change-trust-bundle.schema.json",
+  "title": "FinRedOps Change Trust Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "bundle_id", "keys"],
+  "properties": {
+    "schema_version": {"const": "finredops.change-trust-bundle.v1"},
+    "bundle_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "keys": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issuer", "subject", "key_id", "public_key", "role", "not_before", "not_after", "status", "algorithm"],
+        "properties": {
+          "issuer": {"type": "string", "minLength": 1, "maxLength": 200},
+          "subject": {"type": "string", "minLength": 1, "maxLength": 200},
+          "key_id": {"type": "string", "minLength": 1, "maxLength": 200},
+          "public_key": {"type": "string", "minLength": 1},
+          "role": {"enum": ["configuration_governor", "security_governor"]},
+          "not_before": {"type": "string", "format": "date-time"},
+          "not_after": {"type": "string", "format": "date-time"},
+          "status": {"enum": ["active", "disabled"]},
+          "algorithm": {"const": "Ed25519"}
+        }
+      }
+    }
+  }
+}

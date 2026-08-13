@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/change-control-resolution.schema.json",
+  "title": "FinRedOps Change Control Resolution v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "change_id", "request_digest", "trust_bundle_digest", "signature_ids", "subjects", "roles", "approved_at", "cryptographic_signatures_verified", "independent_change_approval_verified", "signature_algorithm", "resolution_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.change-control-resolution.v1"},
+    "change_id": {"type": "string", "pattern": "^FRX-CHG-[A-F0-9]{24}$"},
+    "request_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "trust_bundle_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "signature_ids": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^FRX-CHS-[A-F0-9]{24}$"}},
+    "subjects": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 200}},
+    "roles": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["configuration_governor", "security_governor"]}},
+    "approved_at": {"type": "string", "format": "date-time"},
+    "cryptographic_signatures_verified": {"const": true},
+    "independent_change_approval_verified": {"const": true},
+    "signature_algorithm": {"const": "Ed25519"},
+    "resolution_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

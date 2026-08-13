@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/change-request.schema.json",
+  "title": "FinRedOps Change Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "change_id", "institution_id", "change_type", "operation", "object_id", "before_digest", "after_digest", "context_digest", "requested_by", "reason", "requested_at", "valid_until", "request_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.change-request.v1"},
+    "change_id": {"type": "string", "pattern": "^FRX-CHG-[A-F0-9]{24}$"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "change_type": {"enum": ["tenant_routing_policy", "postgres_service_account_mapping"]},
+    "operation": {"enum": ["create", "update", "disable"]},
+    "object_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "before_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "after_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "context_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "requested_by": {"type": "string", "minLength": 1, "maxLength": 200},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "requested_at": {"type": "string", "format": "date-time"},
+    "valid_until": {"type": "string", "format": "date-time"},
+    "request_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
