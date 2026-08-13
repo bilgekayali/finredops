@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finredops"
-version = "0.8.0"
+version = "0.8.1"
 description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,6 +15,7 @@ license = { file = "LICENSE" }
 keywords = [
   "ai-security",
   "dora",
+  "envelope-encryption",
   "financial-services",
   "hsm",
   "iso-27001",
@@ -41,6 +42,11 @@ classifiers = [
 dependencies = [
   "cryptography>=49,<50",
   "PyJWT[crypto]>=2.13,<3",
+]
+
+[project.optional-dependencies]
+aws-kms = [
+  "boto3>=1.35,<2",
 ]
 
 [project.urls]

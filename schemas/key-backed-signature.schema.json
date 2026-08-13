@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.local/schemas/key-backed-signature.schema.json",
+  "title": "FinRedOps Key-backed Signature v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "institution_id",
+    "purpose",
+    "object_id",
+    "object_digest",
+    "key_id",
+    "provider",
+    "key_ref_digest",
+    "signing_algorithm",
+    "signature",
+    "signed_at",
+    "signing_document_digest",
+    "artifact_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.key-backed-signature.v1"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "purpose": {"enum": ["audit_chain", "execution_receipt"]},
+    "object_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "object_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "key_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "provider": {"type": "string", "minLength": 1, "maxLength": 512},
+    "key_ref_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "signing_algorithm": {"type": "string", "minLength": 1, "maxLength": 512},
+    "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$", "maxLength": 16384},
+    "signed_at": {"type": "string", "format": "date-time"},
+    "signing_document_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifact_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

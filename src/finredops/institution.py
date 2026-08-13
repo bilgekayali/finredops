@@ -1,9 +1,9 @@
 """Institution security context and provider-neutral key-reference contracts.
 
-This module records institution ownership and key custody references without
-storing secret material or claiming that encryption/signing has occurred. It is
-intended to make tenant and key boundaries explicit before concrete KMS/HSM
-adapters are introduced.
+The context records institution ownership and opaque KMS/HSM key references.
+Secret key material is never stored here.  v0.8.1 cryptographic providers use
+these references for real envelope-encryption and signing operations while the
+underlying KEKs/private keys remain under institution control.
 """
 
 from __future__ import annotations
@@ -153,6 +153,13 @@ class InstitutionSecurityContext:
             raise InstitutionContextError(
                 f"Exactly one active institution key is required for purpose {purpose!r}."
             )
+        return matches[0]
+
+    def key_by_id(self, key_id: str) -> InstitutionKeyReference:
+        _identifier(key_id, "key_id")
+        matches = [item for item in self.key_references if item.key_id == key_id]
+        if len(matches) != 1:
+            raise InstitutionContextError(f"Unknown or ambiguous institution key id {key_id!r}.")
         return matches[0]
 
 

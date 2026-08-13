@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.local/schemas/envelope-encrypted-artifact.schema.json",
+  "title": "FinRedOps Envelope Encrypted Artifact v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "institution_id",
+    "object_type",
+    "object_id",
+    "key_id",
+    "provider",
+    "key_ref_digest",
+    "content_algorithm",
+    "wrapping_algorithm",
+    "nonce",
+    "ciphertext",
+    "wrapped_dek",
+    "plaintext_digest",
+    "aad_digest",
+    "created_at",
+    "envelope_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.envelope-encrypted-artifact.v1"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "object_type": {"type": "string", "minLength": 1, "maxLength": 512},
+    "object_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "key_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "provider": {"type": "string", "minLength": 1, "maxLength": 512},
+    "key_ref_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "content_algorithm": {"const": "AES-256-GCM"},
+    "wrapping_algorithm": {"type": "string", "minLength": 1, "maxLength": 512},
+    "nonce": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$", "maxLength": 64},
+    "ciphertext": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$", "maxLength": 40000000},
+    "wrapped_dek": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$", "maxLength": 32768},
+    "plaintext_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "aad_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "envelope_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
