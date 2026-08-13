@@ -13,15 +13,16 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.8.0** keeps simulation as the safe default and preserves the
+> **Version 0.8.1** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision and report-issuance boundaries. It
-> adds institution-scoped SQLite persistence and a digest-bound institution
-> security context for opaque, institution-owned KMS/HSM key references. The
-> same engagement or idempotency identifier can exist independently in two
-> institutions without cross-tenant collision through the store API. v0.8.0 does
-> **not** claim KMS/HSM encryption or signing execution yet: persistence metadata
-> explicitly records `encryption_at_rest_verified: false`, and secret/private key
-> material is not stored in the key-reference contract.
+> extends the v0.8 institution-scoped persistence model with real application-
+> layer envelope encryption: every protected snapshot or audit row receives a
+> fresh AES-256-GCM data-encryption key (DEK), the DEK is wrapped through an
+> institution-owned KMS/HSM provider, and only ciphertext plus the wrapped DEK is
+> persisted. v0.8.1 also adds provider-backed signatures for audit-chain and
+> execution-receipt digests. The concrete AWS KMS adapter uses customer-managed
+> key references without exporting KMS key material; other KMS/HSM backends use
+> the provider-neutral interface and require separately reviewed adapters.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -64,6 +65,9 @@ flowchart TD
     M --> P["Two signed report approvers"]
     P --> Q["Approved, not automatically issued"]
     S["Institution-scoped persistence"] --> H
+    T["Fresh AES-256-GCM DEK + institution KMS/HSM"] --> S
+    H --> U["KMS/HSM-backed audit signature"]
+    G --> V["KMS/HSM-backed receipt signature"]
 ```
 
 ## Regulatory & security assurance coverage
@@ -119,7 +123,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.8.0 behavior |
+| Boundary | v0.8.1 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -139,13 +143,15 @@ sources.
 | Approval trust roots | Dedicated public-key bundle; reviewer keys cannot authorize business risk or report approval |
 | Report approval | Exactly two distinct `report_approver` signatures bound to source draft digest + trusted-promotion digest |
 | Tenant persistence | Store handle binds one institution; snapshots/audit/idempotency use institution-scoped composite keys |
-| Institution key boundary | Digest-bound opaque institution-owned KMS/HSM references; private key material rejected; cryptographic execution still separate |
+| Institution envelope encryption | Fresh per-record AES-256-GCM DEK; DEK wrapped by matching institution KMS/HSM provider; tenant/object context authenticated |
+| Key-backed evidence | Audit-chain and execution-receipt digests can be signed/verified through the institution `audit_signing` key |
+| Concrete KMS adapter | AWS KMS `Encrypt`/`Decrypt` + `Sign`/`Verify`; AWS credentials/key policy remain outside FinRedOps |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
 | Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, tenant verification, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
-| Accountability | Append-only hash chain and offline-verifiable artifacts |
+| Accountability | Append-only hash chain, optional provider-backed signatures and offline-verifiable artifacts |
 
 ## v0.6 end-to-end operator workflow
 
@@ -386,7 +392,7 @@ provider contract, validation rules, role binding and remaining limitations.
 
 ## v0.8.0 tenant isolation and institution key boundaries
 
-The SQLite governance store now binds every handle to one `institution_id`.
+The SQLite governance store binds every handle to one `institution_id`.
 Snapshots, audit events and idempotency records use composite institution-scoped
 keys, so the same engagement or request identifier can exist independently in
 two institutions. Schema-v1 data is migrated transactionally into the explicit
@@ -404,8 +410,7 @@ finredops validate-institution-context \
 
 The context contains only opaque provider references and a deterministic digest.
 It rejects obvious private-key material and requires one active data-encryption
-reference and one active audit-signing reference. Validation explicitly reports
-that encryption and audit signing have **not** been verified by this feature.
+reference and one active audit-signing reference.
 
 Verify one institution-scoped persisted audit chain:
 
@@ -416,14 +421,47 @@ finredops verify-tenant-store \
   --institution-id bank-a
 ```
 
-This is a persistence isolation baseline, not a complete production multi-tenant
-control plane. Authenticated tenant routing, database row-level security,
-institution-owned envelope encryption, HSM/KMS-backed signing and external audit
-anchoring remain separate milestones.
+Authenticated tenant routing and database-engine row-level security remain
+separate production-hardening milestones.
 
 See **[Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)**
 for migration behavior, key custody references, security properties and explicit
 non-claims.
+
+## v0.8.1 KMS/HSM envelope encryption and signed evidence
+
+v0.8.1 turns the v0.8 key-reference boundary into an executable cryptographic
+provider interface. When a matching institution security context and
+`KmsHsmProvider` are supplied, the SQLite store encrypts new snapshot and audit
+payloads before persistence with a fresh per-record AES-256-GCM DEK. The DEK is
+wrapped by the institution provider, and the stored envelope is bound to the
+institution and exact object context through authenticated data.
+
+Legacy plaintext records remain visibly `plaintext` until an explicit
+`encrypt_existing_records()` maintenance operation rewrites them. Store metadata
+reports encrypted/plaintext counts and only sets `encryption_at_rest_verified`
+when the configured institution has protected records and no remaining legacy
+plaintext snapshot/audit payloads.
+
+The same provider boundary signs canonical SHA-256 targets for audit chains and
+execution receipts. Signatures bind the institution, exact key reference,
+object digest and signing time. A modified/extended audit chain or modified
+receipt therefore cannot reuse the old signature.
+
+A concrete `AwsKmsProvider` is included. Install its optional dependency with:
+
+```bash
+python -m pip install 'finredops[aws-kms]'
+```
+
+It uses AWS KMS `Encrypt`/`Decrypt` with an encryption context and `Sign`/`Verify`
+with explicitly configured SHA-256 signing algorithms. AWS credentials, IAM/key
+policy, key creation and key lifecycle remain institution responsibilities.
+
+Other KMS/HSM provider categories are represented by the protocol but do not
+all have built-in v0.8.1 adapters. See
+**[Institution-owned KMS/HSM envelope encryption and evidence signatures](docs/KMS_ENVELOPE_SIGNING.md)**
+for the cryptographic model, rotation semantics and explicit limitations.
 
 ## Reproduce the reviewed-report demo from an installed wheel
 
@@ -463,7 +501,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.8.0-py3-none-any.whl \
+gh attestation verify finredops-0.8.1-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -511,6 +549,10 @@ src/finredops/
   oidc_identity.py        offline OIDC/JWKS verification and signed-identity binding
   oidc_cli.py             v0.7.2 external-IdP operator commands
   institution.py          institution security context and opaque KMS/HSM references
+  crypto_provider.py      provider-neutral KMS/HSM wrap/unwrap/sign/verify boundary
+  aws_kms.py              AWS KMS production adapter
+  envelope.py             per-record AES-256-GCM envelope encryption
+  signed_evidence.py      KMS/HSM-backed audit-chain and receipt signatures
   hardening_cli.py        v0.8 tenant/key-boundary operator commands
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
@@ -520,7 +562,7 @@ src/finredops/
   evidence.py             sensitive-data minimization boundary
   custody.py              metadata-only evidence registry and custody hash chain
   audit.py                append-only SHA-256 audit chain
-  store.py                institution-scoped SQLite revisions, audit and idempotency
+  store.py                institution-scoped, optional envelope-encrypted SQLite persistence
   service.py              engagement and approval state machine
   profiles.py             financial-institution preflight policy
   regulations.py          versioned Turkish regulatory control registry
@@ -530,21 +572,21 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned data contracts, including reviewer, approval, OIDC and institution context
+schemas/                  versioned data contracts, including reviewer, approval, OIDC, institution, envelope and evidence-signature contracts
 docs/                     architecture, safety, assurance, operator, release, trust and hardening workflow
 examples/                 source-tree synthetic reserved-namespace inputs
-tests/                    policy, integrity, trust, approval, OIDC, tenant, packaging and end-to-end tests
+tests/                    policy, integrity, trust, approval, OIDC, tenant, KMS/envelope, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
 
 FinRedOps demonstrates technical patterns that can support governed security
-testing. Hash chaining provides **tamper evidence**, not non-repudiation.
-SQLite v0.8 provides institution-scoped namespaces through the FinRedOps store
-API, but it is still demonstration persistence rather than an authenticated
+testing. Hash chaining alone provides **tamper evidence**, not non-repudiation.
+SQLite provides institution-scoped namespaces through the FinRedOps store API,
+but it is still demonstration persistence rather than an authenticated
 production multi-tenant system of record. Tenant scope does not by itself imply
-row-level security, authorization, or encryption at rest. Regulatory mappings do
-not establish legal applicability, certification, or compliance.
+database-engine row-level security or tenant authorization. Regulatory mappings
+do not establish legal applicability, certification, or compliance.
 
 Release checksum validation establishes local byte integrity relative to the
 supplied manifest; it does not establish build origin. GitHub/Sigstore artifact
@@ -561,10 +603,14 @@ identities. It does **not** fetch or continuously refresh IdP metadata, interpre
 the business meaning of an ACR value, validate SAML/device posture, or prove
 regulatory acceptance.
 
-v0.8.0 records institution-owned key custody references and rejects private key
-material from that context, but it does **not** yet invoke those keys for
-persistence encryption or audit signing. FinRedOps also does not automatically
-issue, deliver or submit an approved report.
+v0.8.1 can perform real application-layer envelope encryption and provider-backed
+audit/receipt signing when a matching `KmsHsmProvider` is configured. The AWS KMS
+adapter is built in; other KMS/HSM families require separate adapter
+implementations. FinRedOps does not claim that a configured key reference proves
+correct IAM/key policy, does not create/export institution keys, cannot guarantee
+zeroization of every transient Python byte copy, and does not yet provide
+external immutable audit anchoring. FinRedOps also does not automatically issue,
+deliver or submit an approved report.
 
 ## Reference baseline
 
@@ -577,6 +623,7 @@ The design and analysis model are informed by, but do not claim conformance with
 - [TSE Bilişim Teknolojileri Sızma Testleri](https://www.tse.org.tr/sizma-testleri/) and [TS 13638/T2 firm certification prerequisites](https://www.tse.org.tr/sizma-testi-belgelendirmesi/)
 - [ISO/IEC 27001:2022](https://www.iso.org/standard/27001) and [ISO/IEC 27002:2022](https://www.iso.org/standard/75652.html)
 - [NIST SP 800-115 — Technical Guide to Information Security Testing and Assessment](https://csrc.nist.gov/pubs/sp/800/115/final)
+- [NIST SP 800-38D — GCM authenticated encryption](https://csrc.nist.gov/pubs/sp/800/38/d/final)
 - [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
 - [GDPR — Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
@@ -597,6 +644,7 @@ Key documentation:
 - [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
 - [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
 - [Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)
+- [Institution-owned KMS/HSM envelope encryption and evidence signatures](docs/KMS_ENVELOPE_SIGNING.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)
