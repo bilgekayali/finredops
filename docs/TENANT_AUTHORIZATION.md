@@ -15,9 +15,13 @@ The routing decision is derived from four independently digest-bound inputs:
 3. the current institution security context;
 4. a requested bounded capability set.
 
-The policy binds one `oidc_provider_id` to one `institution_id`. Each grant names
-one exact OIDC `sub`, the FinRedOps roles that subject may use in the institution,
-and a closed capability set:
+The policy binds one exact `oidc_provider_id` **and its
+`provider_config_digest`** to one `institution_id`. Pinning the provider
+configuration means an IdP policy change (for example issuer, client audience,
+algorithm allow-list, ACR requirement, or another provider-config field) cannot
+silently inherit a routing grant merely because the human-readable provider id
+stayed the same. Each grant names one exact OIDC `sub`, the FinRedOps roles that
+subject may use in the institution, and a closed capability set:
 
 - `store_read`
 - `store_write`
@@ -32,7 +36,7 @@ Wildcards and implicit membership are intentionally unsupported.
 artifact binds:
 
 - institution id and current institution-context digest;
-- routing policy id and policy digest;
+- routing policy id and policy digest (which includes the exact OIDC provider-config digest);
 - OIDC verification id and verification digest;
 - provider id and exact subject;
 - the intersection of OIDC roles and policy-granted roles;
@@ -46,8 +50,8 @@ technical workflow only; they are not regulatory or legal approval.
 A stored authorization is never trusted by itself. `verify-tenant-authorization`
 and `AuthorizedTenantSession.create()` require the source OIDC verification,
 current routing policy, and current institution context again. Policy changes,
-context changes, provider changes, subject changes, expired identity, role
-changes, or capability escalation therefore fail closed.
+context changes, provider or provider-configuration changes, subject changes,
+expired identity, role changes, or capability escalation therefore fail closed.
 
 ## Store boundary
 
@@ -72,7 +76,8 @@ finredops tenant-routing-policy-template \
   --output tenant-routing-policy.json
 ```
 
-The generated policy is intentionally conservative (`store_read` and
+The generated policy uses a bounded digest-derived policy id, pins the current
+OIDC provider configuration, and is intentionally conservative (`store_read` and
 `audit_verify`). Review it under the institution's configuration-change process
 before granting broader capabilities.
 
@@ -115,7 +120,8 @@ finredops authorized-tenant-store-metadata finredops.db \
 
 Authorization is rejected when any of the following occurs:
 
-- OIDC provider does not exactly match the institution policy;
+- OIDC provider id does not exactly match the institution policy;
+- OIDC provider-config digest does not exactly match the pinned policy value;
 - OIDC subject has no exact active grant;
 - OIDC role claims do not intersect the policy grant;
 - requested capability exceeds the grant;
