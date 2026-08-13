@@ -3,7 +3,7 @@
 This layer consumes an already verified OIDC identity artifact and an explicit,
 digest-bound institution routing policy. It never accepts an institution id from
 an untrusted request as sufficient authority. Authorization is exact-subject,
-exact-provider, exact-institution and capability bound.
+exact-provider-configuration, exact-institution and capability bound.
 """
 
 from __future__ import annotations
@@ -73,6 +73,17 @@ def _derived_id(body: Mapping[str, Any]) -> str:
     return f"FRX-TNA-{sha256_digest(body)[:24].upper()}"
 
 
+def _routing_policy_id(
+    context: InstitutionSecurityContext, verification: OIDCIdentityVerification
+) -> str:
+    seed = {
+        "institution_id": context.institution_id,
+        "oidc_provider_id": verification.provider_id,
+        "oidc_provider_config_digest": verification.provider_config_digest,
+    }
+    return f"FRX-TRP-{sha256_digest(seed)[:24].upper()}"
+
+
 @dataclass(frozen=True, slots=True)
 class TenantSubjectGrant:
     subject: str
@@ -106,6 +117,7 @@ class TenantRoutingPolicy:
     policy_id: str
     institution_id: str
     oidc_provider_id: str
+    oidc_provider_config_digest: str
     grants: tuple[TenantSubjectGrant, ...]
     schema_version: str = "finredops.tenant-routing-policy.v1"
 
@@ -115,6 +127,7 @@ class TenantRoutingPolicy:
         _identifier(self.policy_id, "policy_id")
         _identifier(self.institution_id, "institution_id")
         _identifier(self.oidc_provider_id, "oidc_provider_id")
+        _digest(self.oidc_provider_config_digest, "oidc_provider_config_digest")
         if not 1 <= len(self.grants) <= 512:
             raise TenantAuthorizationError("Tenant routing policy requires 1 to 512 grants.")
         subjects = [item.subject for item in self.grants]
@@ -128,6 +141,7 @@ class TenantRoutingPolicy:
             "policy_id": self.policy_id,
             "institution_id": self.institution_id,
             "oidc_provider_id": self.oidc_provider_id,
+            "oidc_provider_config_digest": self.oidc_provider_config_digest,
             "grants": [item.as_dict() for item in self.grants],
         }
 
@@ -154,6 +168,7 @@ def tenant_policy_from_document(document: Any) -> TenantRoutingPolicy:
         "policy_id",
         "institution_id",
         "oidc_provider_id",
+        "oidc_provider_config_digest",
         "grants",
         "policy_digest",
     }
@@ -180,6 +195,7 @@ def tenant_policy_from_document(document: Any) -> TenantRoutingPolicy:
         policy_id=str(document["policy_id"]),
         institution_id=str(document["institution_id"]),
         oidc_provider_id=str(document["oidc_provider_id"]),
+        oidc_provider_config_digest=str(document["oidc_provider_config_digest"]),
         grants=tuple(grants),
         schema_version=str(document["schema_version"]),
     )
@@ -192,9 +208,10 @@ def tenant_policy_template(
     *, context: InstitutionSecurityContext, verification: OIDCIdentityVerification
 ) -> dict[str, Any]:
     policy = TenantRoutingPolicy(
-        policy_id=f"{context.institution_id}-routing-v1",
+        policy_id=_routing_policy_id(context, verification),
         institution_id=context.institution_id,
         oidc_provider_id=verification.provider_id,
+        oidc_provider_config_digest=verification.provider_config_digest,
         grants=(
             TenantSubjectGrant(
                 subject=verification.subject,
@@ -333,6 +350,10 @@ def _effective_grant(
 ) -> tuple[TenantSubjectGrant, tuple[str, ...]]:
     if verification.provider_id != policy.oidc_provider_id:
         raise TenantAuthorizationError("OIDC provider is not authorized by the tenant routing policy.")
+    if verification.provider_config_digest != policy.oidc_provider_config_digest:
+        raise TenantAuthorizationError(
+            "OIDC provider configuration does not match the tenant routing policy."
+        )
     if policy.institution_id != context.institution_id:
         raise TenantAuthorizationError("Tenant routing policy and institution context do not match.")
     grant = policy.grant_for_subject(verification.subject)
