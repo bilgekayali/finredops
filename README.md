@@ -13,14 +13,15 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.7.2** keeps simulation as the safe default and preserves the
+> **Version 0.8.0** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision and report-issuance boundaries. It
-> adds an offline OIDC/JWKS identity adapter that verifies an external IdP ID
-> token against pinned issuer/client/algorithm policy, supplied JWKS, nonce,
-> authentication age, ACR and FinRedOps role claims. The verified OIDC subject
-> and role can then be bound to existing reviewer or approval signatures with
-> exact workflow coverage. FinRedOps does not fetch discovery/JWKS autonomously,
-> retain raw ID tokens, store private keys, or submit reports to a regulator.
+> adds institution-scoped SQLite persistence and a digest-bound institution
+> security context for opaque, institution-owned KMS/HSM key references. The
+> same engagement or idempotency identifier can exist independently in two
+> institutions without cross-tenant collision through the store API. v0.8.0 does
+> **not** claim KMS/HSM encryption or signing execution yet: persistence metadata
+> explicitly records `encryption_at_rest_verified: false`, and secret/private key
+> material is not stored in the key-reference contract.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -62,6 +63,7 @@ flowchart TD
     R --> M["Trusted draft-report promotion"]
     M --> P["Two signed report approvers"]
     P --> Q["Approved, not automatically issued"]
+    S["Institution-scoped persistence"] --> H
 ```
 
 ## Regulatory & security assurance coverage
@@ -117,7 +119,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.7.2 behavior |
+| Boundary | v0.8.0 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -136,9 +138,11 @@ sources.
 | Risk acceptance | Separate `business_risk_owner`; acceptance signature is bound to acceptance digest + trusted-review-resolution digest |
 | Approval trust roots | Dedicated public-key bundle; reviewer keys cannot authorize business risk or report approval |
 | Report approval | Exactly two distinct `report_approver` signatures bound to source draft digest + trusted-promotion digest |
+| Tenant persistence | Store handle binds one institution; snapshots/audit/idempotency use institution-scoped composite keys |
+| Institution key boundary | Digest-bound opaque institution-owned KMS/HSM references; private key material rejected; cryptographic execution still separate |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, promotion and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, tenant verification, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only hash chain and offline-verifiable artifacts |
@@ -380,6 +384,47 @@ an implicit network capability.
 See **[OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)** for the full
 provider contract, validation rules, role binding and remaining limitations.
 
+## v0.8.0 tenant isolation and institution key boundaries
+
+The SQLite governance store now binds every handle to one `institution_id`.
+Snapshots, audit events and idempotency records use composite institution-scoped
+keys, so the same engagement or request identifier can exist independently in
+two institutions. Schema-v1 data is migrated transactionally into the explicit
+`default` institution.
+
+Create and validate an institution-owned key-reference context:
+
+```bash
+finredops institution-context-template \
+  --output institution-security-context.json
+
+finredops validate-institution-context \
+  institution-security-context.json
+```
+
+The context contains only opaque provider references and a deterministic digest.
+It rejects obvious private-key material and requires one active data-encryption
+reference and one active audit-signing reference. Validation explicitly reports
+that encryption and audit signing have **not** been verified by this feature.
+
+Verify one institution-scoped persisted audit chain:
+
+```bash
+finredops verify-tenant-store \
+  finredops.db \
+  FRX-ENGAGEMENT-001 \
+  --institution-id bank-a
+```
+
+This is a persistence isolation baseline, not a complete production multi-tenant
+control plane. Authenticated tenant routing, database row-level security,
+institution-owned envelope encryption, HSM/KMS-backed signing and external audit
+anchoring remain separate milestones.
+
+See **[Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)**
+for migration behavior, key custody references, security properties and explicit
+non-claims.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
 The synthetic engagement, plan, and SARIF input ship as package data. A source
@@ -418,7 +463,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.7.2-py3-none-any.whl \
+gh attestation verify finredops-0.8.0-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -431,6 +476,7 @@ trust model, tag/version binding, clean-wheel test, and verification boundaries.
 python -m finredops demo --output demo-output
 python -m finredops verify-audit demo-output/audit.jsonl
 python -m finredops verify-store demo-output/finredops.db FRX-DEMO-2026-001
+python -m finredops verify-tenant-store demo-output/finredops.db FRX-DEMO-2026-001 --institution-id default
 python -m finredops validate-report demo-output/regulatory-report.json
 python -m finredops validate-applicability demo-output/applicability.json
 python -m finredops validate-evidence-manifest demo-output/evidence-manifest.json
@@ -464,15 +510,17 @@ src/finredops/
   signed_approval_cli.py  v0.7.1 signed approval operator commands
   oidc_identity.py        offline OIDC/JWKS verification and signed-identity binding
   oidc_cli.py             v0.7.2 external-IdP operator commands
+  institution.py          institution security context and opaque KMS/HSM references
+  hardening_cli.py        v0.8 tenant/key-boundary operator commands
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
-  entrypoint.py           top-level legacy/operator/trust/approval/OIDC command router
+  entrypoint.py           top-level legacy/operator/trust/approval/OIDC/hardening router
   release_integrity.py    packaged examples and strict local checksum verification
   examples/               installed-wheel synthetic engagement, plan, and SARIF
   evidence.py             sensitive-data minimization boundary
   custody.py              metadata-only evidence registry and custody hash chain
   audit.py                append-only SHA-256 audit chain
-  store.py                transactional SQLite revisions and audit persistence
+  store.py                institution-scoped SQLite revisions, audit and idempotency
   service.py              engagement and approval state machine
   profiles.py             financial-institution preflight policy
   regulations.py          versioned Turkish regulatory control registry
@@ -482,19 +530,21 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned data contracts, including reviewer, approval and OIDC identity trust
-docs/                     architecture, safety, assurance, operator, release and trust workflow
+schemas/                  versioned data contracts, including reviewer, approval, OIDC and institution context
+docs/                     architecture, safety, assurance, operator, release, trust and hardening workflow
 examples/                 source-tree synthetic reserved-namespace inputs
-tests/                    policy, integrity, trust, approval, OIDC, packaging, and end-to-end tests
+tests/                    policy, integrity, trust, approval, OIDC, tenant, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
 
 FinRedOps demonstrates technical patterns that can support governed security
 testing. Hash chaining provides **tamper evidence**, not non-repudiation.
-SQLite is durable demonstration storage, not an authenticated multi-tenant
-system of record. Regulatory mappings do not establish legal applicability,
-certification, or compliance.
+SQLite v0.8 provides institution-scoped namespaces through the FinRedOps store
+API, but it is still demonstration persistence rather than an authenticated
+production multi-tenant system of record. Tenant scope does not by itself imply
+row-level security, authorization, or encryption at rest. Regulatory mappings do
+not establish legal applicability, certification, or compliance.
 
 Release checksum validation establishes local byte integrity relative to the
 supplied manifest; it does not establish build origin. GitHub/Sigstore artifact
@@ -509,8 +559,12 @@ cryptographically validated against pinned provider policy and supplied JWKS,
 and that its `sub` + FinRedOps role claims were exactly bound to signed workflow
 identities. It does **not** fetch or continuously refresh IdP metadata, interpret
 the business meaning of an ACR value, validate SAML/device posture, or prove
-regulatory acceptance. FinRedOps also does not automatically issue, deliver or
-submit an approved report.
+regulatory acceptance.
+
+v0.8.0 records institution-owned key custody references and rejects private key
+material from that context, but it does **not** yet invoke those keys for
+persistence encryption or audit signing. FinRedOps also does not automatically
+issue, deliver or submit an approved report.
 
 ## Reference baseline
 
@@ -542,6 +596,7 @@ Key documentation:
 - [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
 - [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
 - [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
+- [Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)
