@@ -33,6 +33,7 @@ jobs:
 
           offline = (
               "anchor_models.py",
+              "anchor_provider.py",
               "anchor_verify.py",
               "anchor_source.py",
               "anchor_cli.py",
