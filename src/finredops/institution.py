@@ -72,10 +72,11 @@ class InstitutionKeyReference:
         key_ref = _text(self.key_ref, "key_ref", 1024)
         if any(marker in key_ref.upper() for marker in _SECRET_MARKERS):
             raise InstitutionContextError("key_ref must be an opaque handle, not private key material.")
-        if not self.institution_owned:
+        if self.institution_owned is not True:
             raise InstitutionContextError("v0.8 institution keys must be institution-owned.")
-        if self.public_key_fingerprint is not None and not _DIGEST.fullmatch(
-            self.public_key_fingerprint
+        if self.public_key_fingerprint is not None and (
+            not isinstance(self.public_key_fingerprint, str)
+            or not _DIGEST.fullmatch(self.public_key_fingerprint)
         ):
             raise InstitutionContextError(
                 "public_key_fingerprint must be a lowercase SHA-256 digest when supplied."
@@ -102,14 +103,28 @@ class InstitutionSecurityContext:
         key_ids = [item.key_id for item in self.key_references]
         if len(set(key_ids)) != len(key_ids):
             raise InstitutionContextError("Institution key ids must be unique.")
-        active_purposes = {
-            item.purpose for item in self.key_references if item.status == "active"
+        active_counts = {
+            purpose: sum(
+                1
+                for item in self.key_references
+                if item.purpose == purpose and item.status == "active"
+            )
+            for purpose in _KEY_PURPOSES
         }
+        ambiguous = sorted(purpose for purpose, count in active_counts.items() if count > 1)
+        if ambiguous:
+            raise InstitutionContextError(
+                "Institution context cannot have multiple active keys for: "
+                + ", ".join(ambiguous)
+                + "."
+            )
         required = {"data_encryption", "audit_signing"}
-        missing = sorted(required - active_purposes)
+        missing = sorted(purpose for purpose in required if active_counts[purpose] != 1)
         if missing:
             raise InstitutionContextError(
-                "Institution context requires active key references for: " + ", ".join(missing) + "."
+                "Institution context requires exactly one active key reference for: "
+                + ", ".join(missing)
+                + "."
             )
 
     def core(self) -> dict[str, Any]:
@@ -127,6 +142,8 @@ class InstitutionSecurityContext:
         return {**self.core(), "context_digest": self.digest()}
 
     def active_key(self, purpose: str) -> InstitutionKeyReference:
+        if purpose not in _KEY_PURPOSES:
+            raise InstitutionContextError("Unsupported institution key purpose.")
         matches = [
             item
             for item in self.key_references
@@ -171,26 +188,26 @@ def institution_context_from_document(document: Any) -> InstitutionSecurityConte
             raise InstitutionContextError(
                 f"key_references[{index}] does not match the v1 contract."
             )
+        if not isinstance(item["institution_owned"], bool):
+            raise InstitutionContextError(
+                f"key_references[{index}].institution_owned must be a boolean."
+            )
         references.append(
             InstitutionKeyReference(
-                key_id=str(item["key_id"]),
-                purpose=str(item["purpose"]),
-                provider=str(item["provider"]),
-                key_ref=str(item["key_ref"]),
-                status=str(item["status"]),
-                institution_owned=bool(item["institution_owned"]),
-                public_key_fingerprint=(
-                    None
-                    if item["public_key_fingerprint"] is None
-                    else str(item["public_key_fingerprint"])
-                ),
+                key_id=item["key_id"],
+                purpose=item["purpose"],
+                provider=item["provider"],
+                key_ref=item["key_ref"],
+                status=item["status"],
+                institution_owned=item["institution_owned"],
+                public_key_fingerprint=item["public_key_fingerprint"],
             )
         )
     context = InstitutionSecurityContext(
-        institution_id=str(document["institution_id"]),
-        institution_name=str(document["institution_name"]),
+        institution_id=document["institution_id"],
+        institution_name=document["institution_name"],
         key_references=tuple(references),
-        schema_version=str(document["schema_version"]),
+        schema_version=document["schema_version"],
     )
     if document["context_digest"] != context.digest():
         raise InstitutionContextError("Institution security context digest is invalid.")
@@ -213,7 +230,7 @@ def institution_context_template() -> dict[str, Any]:
                 purpose="audit_signing",
                 provider="other",
                 key_ref="replace-with-institution-hsm-key-reference",
-                public_key_fingerprint="0" * 64,
+                public_key_fingerprint=None,
             ),
         ),
     )
