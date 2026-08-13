@@ -34,6 +34,8 @@ jobs:
           python -m finredops --help | grep -q "verify-release-checksums"
           python -m finredops --help | grep -q "verify-review-trust"
           python -m finredops --help | grep -q "promote-trusted-reviewed-report"
+          python -m finredops --help | grep -q "risk-acceptance-signature-request"
+          python -m finredops --help | grep -q "approve-trusted-report"
           python -m finredops validate-engagement examples/synthetic_engagement.json
           python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
           python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
@@ -149,6 +151,7 @@ jobs:
           /tmp/finredops-wheel/bin/python -m pip install dist/*.whl
           /tmp/finredops-wheel/bin/finredops --help | grep -q "export-examples"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-review-trust"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "approve-trusted-report"
 
       - name: Verify packaged examples and bundled demo
         run: |
