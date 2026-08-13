@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/signed-report-approval.schema.json",
+  "title": "FinRedOps Signed Report Approval v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "engagement_id", "approval_trust_bundle_digest", "trusted_promotion_digest", "source_report_digest", "approved_report_digest", "signature_ids", "approvers", "cryptographic_signatures_verified", "signature_algorithm", "report_status", "report_issued", "approval_resolution_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.signed-report-approval.v1"},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "approval_trust_bundle_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "trusted_promotion_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source_report_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "approved_report_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "signature_ids": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^FRX-APS-[A-F0-9]{24}$"}},
+    "approvers": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 200}},
+    "cryptographic_signatures_verified": {"const": true},
+    "signature_algorithm": {"const": "Ed25519"},
+    "report_status": {"const": "approved"},
+    "report_issued": {"const": false},
+    "approval_resolution_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
