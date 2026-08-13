@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinRedOps CVSS 4.0 Validation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "vector", "score", "severity", "version", "technical_severity_only", "financial_business_impact_inferred", "validation_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.cvss40-validation.v1"},
+    "vector": {"type": "string", "pattern": "^CVSS:4\\.0/", "maxLength": 1024},
+    "score": {"type": "number", "minimum": 0, "maximum": 10, "multipleOf": 0.1},
+    "severity": {"enum": ["none", "low", "medium", "high", "critical"]},
+    "version": {"const": "4.0"},
+    "technical_severity_only": {"const": true},
+    "financial_business_impact_inferred": {"const": false},
+    "validation_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
