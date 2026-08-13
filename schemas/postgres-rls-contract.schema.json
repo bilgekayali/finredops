@@ -12,6 +12,7 @@
     "writer_role",
     "tenant_source",
     "runtime_roles_require_nobypassrls",
+    "runtime_roles_require_no_privileged_set_role_path",
     "force_row_level_security",
     "tables",
     "contract_digest"
@@ -24,6 +25,7 @@
     "writer_role": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$"},
     "tenant_source": {"const": "session_user_registry"},
     "runtime_roles_require_nobypassrls": {"const": true},
+    "runtime_roles_require_no_privileged_set_role_path": {"const": true},
     "force_row_level_security": {"const": true},
     "tables": {
       "type": "array",
