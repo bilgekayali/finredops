@@ -61,6 +61,8 @@ jobs:
           /tmp/finredops-release/bin/python -m pip install dist/*.whl
           /tmp/finredops-release/bin/finredops --help | grep -q "verify-review-trust"
           /tmp/finredops-release/bin/finredops --help | grep -q "approve-trusted-report"
+          /tmp/finredops-release/bin/finredops --help | grep -q "verify-oidc-id-token"
+          /tmp/finredops-release/bin/finredops --help | grep -q "verify-oidc-workflow-bindings"
           /tmp/finredops-release/bin/finredops export-examples --output-dir /tmp/finredops-release-examples
           /tmp/finredops-release/bin/finredops validate-engagement /tmp/finredops-release-examples/synthetic_engagement.json
           /tmp/finredops-release/bin/finredops validate-plan /tmp/finredops-release-examples/synthetic_ai_plan.json --engagement /tmp/finredops-release-examples/synthetic_engagement.json
