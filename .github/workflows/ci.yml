@@ -38,6 +38,9 @@ jobs:
           python -m finredops --help | grep -q "approve-trusted-report"
           python -m finredops --help | grep -q "verify-oidc-id-token"
           python -m finredops --help | grep -q "verify-oidc-workflow-bindings"
+          python -m finredops --help | grep -q "authorize-tenant-route"
+          python -m finredops --help | grep -q "verify-tenant-authorization"
+          python -m finredops --help | grep -q "authorized-tenant-store-metadata"
           python -m finredops validate-engagement examples/synthetic_engagement.json
           python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
           python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
@@ -139,6 +142,25 @@ jobs:
               raise SystemExit(f"OIDC verifier imports forbidden network capability: {unexpected}")
           PY
 
+      - name: Enforce tenant authorization no-network and no-token parsing boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          tree = ast.parse(Path("src/finredops/tenant_auth.py").read_text(encoding="utf-8"))
+          forbidden = {"http", "requests", "socket", "subprocess", "urllib", "jwt"}
+          imported = set()
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Import):
+                  imported.update(alias.name.split(".")[0] for alias in node.names)
+              elif isinstance(node, ast.ImportFrom):
+                  imported.add((node.module or "").split(".")[0])
+          unexpected = sorted(imported & forbidden)
+          if unexpected:
+              raise SystemExit(f"tenant authorization imports forbidden capability: {unexpected}")
+          PY
+
       - name: Upload verified demo artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -178,6 +200,8 @@ jobs:
           /tmp/finredops-wheel/bin/finredops --help | grep -q "approve-trusted-report"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-oidc-id-token"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-oidc-workflow-bindings"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "authorize-tenant-route"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-tenant-authorization"
 
       - name: Verify packaged examples and bundled demo
         run: |
