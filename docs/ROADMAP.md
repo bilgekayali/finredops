@@ -97,7 +97,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] signed review-governor supersession and revocation without deleting historical decisions;
 - [x] current-authoritative-review resolution for trusted report promotion;
 - [x] signature-verification evidence exposed through CLI, trust resolution and trusted-promotion outputs;
-- [ ] OIDC/JWKS adapter for authenticated external identity-provider sessions and claims;
+- [x] OIDC/JWKS adapter for authenticated external identity-provider sessions and claims;
 - [x] key-backed report approval and risk-acceptance signatures;
 
 ## v0.7.0 — signed review trust and lifecycle
@@ -110,7 +110,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] trusted promotion uses only current authoritative signed reviews and remains draft-only;
 - [x] versioned trust-bundle, identity-assertion, lifecycle-event and trust-resolution JSON contracts;
 - [x] Python 3.11/3.12/3.13 regression coverage plus installed-wheel verification;
-- [ ] upstream OIDC/JWKS/SAML authentication protocol verification;
+- [x] upstream OIDC/JWKS authentication protocol verification supplied through the v0.7.2 adapter;
 
 ## v0.7.1 — key-backed business and report approvals
 
@@ -123,11 +123,25 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] report-approval signatures bound to source draft digest and trusted-promotion digest;
 - [x] approved report remains `report_issued: false`; delivery/submission stays outside automation;
 - [x] versioned approval trust, signature, risk-resolution and report-approval JSON contracts;
-- [ ] upstream OIDC/JWKS identity-provider authentication and claim binding;
+- [x] upstream OIDC/JWKS identity-provider authentication and claim binding via v0.7.2;
+
+## v0.7.2 — offline OIDC/JWKS identity binding
+
+- [x] pinned OIDC provider configuration with exact HTTPS issuer and client audience;
+- [x] provider-configured asymmetric JWT algorithm allow-list; token headers cannot expand trusted algorithms;
+- [x] bounded operator-supplied JWKS with exact `kid`, signing-use and key-operation validation;
+- [x] ID-token signature, issuer, audience, `azp`, nonce, expiry, issue-time and not-before validation;
+- [x] bounded authentication age, token lifetime and configured ACR requirements;
+- [x] configured OIDC role claim mapped only to recognized FinRedOps human roles;
+- [x] minimized verification artifact retains token/JWKS/config digests but never the raw ID token;
+- [x] exact OIDC `sub` + role binding to signed reviewer/lifecycle or business/report approval objects;
+- [x] aggregate workflow resolver fails closed unless every supplied signed identity has one matching OIDC binding;
+- [x] no autonomous discovery or JWKS network retrieval in the verification path;
+- [x] versioned provider, verification, binding and workflow-resolution JSON contracts;
 
 ## Platform hardening
 
-- [ ] signed identities using an authenticated external identity-provider protocol;
+- [x] signed identities using an authenticated external identity-provider protocol;
 - [ ] tenant isolation and institution-owned encryption keys;
 - [ ] key-backed approval and receipt signatures;
 - [ ] immutable external audit anchoring;

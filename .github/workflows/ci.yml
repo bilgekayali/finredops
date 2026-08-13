@@ -36,6 +36,8 @@ jobs:
           python -m finredops --help | grep -q "promote-trusted-reviewed-report"
           python -m finredops --help | grep -q "risk-acceptance-signature-request"
           python -m finredops --help | grep -q "approve-trusted-report"
+          python -m finredops --help | grep -q "verify-oidc-id-token"
+          python -m finredops --help | grep -q "verify-oidc-workflow-bindings"
           python -m finredops validate-engagement examples/synthetic_engagement.json
           python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
           python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
@@ -115,6 +117,28 @@ jobs:
               )
           PY
 
+      - name: Enforce OIDC verifier no-network boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          tree = ast.parse(Path("src/finredops/oidc_identity.py").read_text(encoding="utf-8"))
+          forbidden = {"http", "http.client", "requests", "socket", "subprocess", "urllib.request"}
+          imported = set()
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Import):
+                  imported.update(alias.name for alias in node.names)
+              elif isinstance(node, ast.ImportFrom):
+                  imported.add(node.module or "")
+          unexpected = sorted(
+              item for item in imported
+              if item in forbidden or any(item.startswith(prefix + ".") for prefix in forbidden)
+          )
+          if unexpected:
+              raise SystemExit(f"OIDC verifier imports forbidden network capability: {unexpected}")
+          PY
+
       - name: Upload verified demo artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -152,6 +176,8 @@ jobs:
           /tmp/finredops-wheel/bin/finredops --help | grep -q "export-examples"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-review-trust"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "approve-trusted-report"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-oidc-id-token"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-oidc-workflow-bindings"
 
       - name: Verify packaged examples and bundled demo
         run: |

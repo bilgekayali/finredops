@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/oidc-identity-verification.schema.json",
+  "title": "FinRedOps OIDC Identity Verification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "verification_id", "provider_id", "provider_config_digest", "jwks_digest", "issuer", "client_id", "subject", "roles", "acr", "token_kid", "token_algorithm", "token_digest", "nonce_digest", "issued_at", "expires_at", "auth_time", "verified_at", "external_idp_protocol_verified", "raw_id_token_retained", "verification_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.oidc-identity-verification.v1"},
+    "verification_id": {"type": "string", "pattern": "^FRX-OIDC-[A-F0-9]{24}$"},
+    "provider_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "provider_config_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "jwks_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "issuer": {"type": "string", "pattern": "^https://"},
+    "client_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "subject": {"type": "string", "minLength": 1, "maxLength": 200},
+    "roles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["qualified_tester", "review_governor", "business_risk_owner", "report_approver"]}},
+    "acr": {"type": "string", "minLength": 1, "maxLength": 256},
+    "token_kid": {"type": "string", "minLength": 1, "maxLength": 256},
+    "token_algorithm": {"enum": ["RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512", "EdDSA"]},
+    "token_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nonce_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "issued_at": {"type": "integer"},
+    "expires_at": {"type": "integer"},
+    "auth_time": {"type": "integer"},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "external_idp_protocol_verified": {"const": true},
+    "raw_id_token_retained": {"const": false},
+    "verification_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

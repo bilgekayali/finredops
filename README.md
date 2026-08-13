@@ -13,14 +13,14 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.7.1** keeps simulation as the safe default and preserves the
-> bounded active-validation and draft-report boundaries. It extends the v0.7
-> verification-only trust model to business risk acceptance and report approval:
-> dedicated approval trust roots verify short-lived Ed25519 signatures bound to
-> the exact acceptance/report digest and trusted workflow context. Exactly two
-> distinct signed report approvers are required before a trusted draft can become
-> `approved`. FinRedOps still does not store private keys, validate upstream
-> OIDC/JWKS sessions, issue reports automatically, or submit anything to a regulator.
+> **Version 0.7.2** keeps simulation as the safe default and preserves the
+> bounded active-validation, signed-decision and report-issuance boundaries. It
+> adds an offline OIDC/JWKS identity adapter that verifies an external IdP ID
+> token against pinned issuer/client/algorithm policy, supplied JWKS, nonce,
+> authentication age, ACR and FinRedOps role claims. The verified OIDC subject
+> and role can then be bound to existing reviewer or approval signatures with
+> exact workflow coverage. FinRedOps does not fetch discovery/JWKS autonomously,
+> retain raw ID tokens, store private keys, or submit reports to a regulator.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -55,7 +55,8 @@ flowchart TD
     G --> H
     I["Untrusted SARIF"] --> J["Bounded intake + deduplication"]
     J --> K["Qualified human review"]
-    K --> L["Signed reviewer identity assertion"]
+    O["OIDC/JWKS verified subject + role"] --> L["Signed reviewer / approval identity"]
+    K --> L
     L --> N["Authoritative review resolution"]
     N --> R["Signed risk acceptance when used"]
     R --> M["Trusted draft-report promotion"]
@@ -94,6 +95,7 @@ The intended assurance chain is:
 security evidence
     -> bounded normalization
     -> qualified human disposition
+    -> external OIDC/JWKS subject + role verification when used
     -> signed identity + engagement binding
     -> authoritative review lifecycle resolution
     -> signed business risk acceptance when applicable
@@ -115,7 +117,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.7.1 behavior |
+| Boundary | v0.7.2 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -127,6 +129,8 @@ sources.
 | Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
 | Finding disposition | Qualified-tester decision with evidence, final severity, impact, recommendation, and control mapping |
 | Reviewer identity | External Ed25519 assertion verification; subject/role bound to engagement, intake, finding and immutable review digest |
+| External IdP identity | Offline OIDC ID-token + supplied-JWKS verification; pinned issuer/client/alg policy, nonce, ACR, authentication age and role claims |
+| OIDC decision binding | Verified OIDC `sub` + role bound to signed reviewer/lifecycle or business/report approval object; aggregate resolver requires exact coverage |
 | Review lifecycle | Signed `review_governor` supersession/revocation; history is preserved and parallel/orphan/cyclic chains fail closed |
 | Authoritative review | Trusted promotion receives only the current cryptographically verified review for each finding |
 | Risk acceptance | Separate `business_risk_owner`; acceptance signature is bound to acceptance digest + trusted-review-resolution digest |
@@ -134,7 +138,7 @@ sources.
 | Report approval | Exactly two distinct `report_approver` signatures bound to source draft digest + trusted-promotion digest |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, promotion and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only hash chain and offline-verifiable artifacts |
@@ -280,10 +284,12 @@ signed acceptance for every acceptance record. The output can include
 `signed-risk-acceptance-resolution.json` in addition to `trust-resolution.json`
 and `trusted-promotion-manifest.json`. The report remains a `draft`.
 
-This release verifies provider-neutral signed assertions, but it does **not** yet
-validate OIDC/JWKS, SAML, MFA, device-posture or institutional-directory session
-claims. That distinction remains explicit in trust-resolution artifacts as
-`external_idp_protocol_verified: false`.
+Provider-neutral Ed25519 signatures remain independently verifiable. v0.7.2
+adds the separate OIDC/JWKS layer described below when an operator needs evidence
+that the signed `subject` and role were backed by a verified external IdP ID
+token. Existing `trust-resolution.json` artifacts do not silently change their
+meaning; OIDC protocol evidence is carried in its own verification/binding
+artifacts.
 
 See **[Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)**
 for the reviewer trust boundary and lifecycle model.
@@ -330,6 +336,50 @@ report**; `signed-report-approval.json` always records `report_issued: false`.
 See **[Signed business and report approvals](docs/SIGNED_APPROVALS.md)** for the
 full signing workflow and trust boundaries.
 
+## v0.7.2 offline OIDC/JWKS identity binding
+
+v0.7.2 verifies an external OpenID Provider ID token without adding autonomous
+network access to FinRedOps. The operator supplies a pinned provider config, a
+bounded JWKS export, the compact ID token and the expected authentication nonce.
+
+```bash
+finredops verify-oidc-id-token \
+  --provider-config trust/oidc-provider.json \
+  --jwks trust/idp-jwks.json \
+  --id-token work/id-token.jwt \
+  --expected-nonce "$OIDC_NONCE" \
+  --as-of 2026-08-13T10:30:00Z \
+  --output work/oidc-verification.json
+```
+
+The verifier checks the cryptographic signature plus exact issuer/client
+binding, configured asymmetric algorithm allow-list, `kid`, nonce, token and
+authentication age, ACR and the configured FinRedOps role claim. The output
+stores SHA-256 token/JWKS/config digests and minimized claims; the raw ID token is
+not retained.
+
+Bind the verified IdP identity to an existing signed reviewer or approval object:
+
+```bash
+finredops bind-oidc-identity \
+  --verification work/oidc-verification.json \
+  --identity-assertion work/reviewer.assertion.json \
+  --as-of 2026-08-13T10:30:00Z \
+  --output work/reviewer.oidc-binding.json
+```
+
+For an entire assessment identity chain, `verify-oidc-workflow-bindings`
+requires exact one-for-one coverage of all supplied signed reviewer/lifecycle and
+business/report approval objects. A successful resolution records
+`external_idp_protocol_verified: true` and `exact_binding_coverage: true`.
+
+No `.well-known` discovery or remote JWKS retrieval occurs in this path. This
+keeps verification deterministic and prevents IdP metadata URLs from becoming
+an implicit network capability.
+
+See **[OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)** for the full
+provider contract, validation rules, role binding and remaining limitations.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
 The synthetic engagement, plan, and SARIF input ship as package data. A source
@@ -368,7 +418,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.7.1-py3-none-any.whl \
+gh attestation verify finredops-0.7.2-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -412,9 +462,11 @@ src/finredops/
   approval_keys.py        separate business/report public-key trust roots
   signed_approvals.py     signed risk-acceptance and report-approval verification
   signed_approval_cli.py  v0.7.1 signed approval operator commands
+  oidc_identity.py        offline OIDC/JWKS verification and signed-identity binding
+  oidc_cli.py             v0.7.2 external-IdP operator commands
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
-  entrypoint.py           top-level legacy/operator/trust/approval command router
+  entrypoint.py           top-level legacy/operator/trust/approval/OIDC command router
   release_integrity.py    packaged examples and strict local checksum verification
   examples/               installed-wheel synthetic engagement, plan, and SARIF
   evidence.py             sensitive-data minimization boundary
@@ -430,10 +482,10 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned data contracts, including reviewer and approval trust
- docs/                    architecture, safety, assurance, operator, release and trust workflow
+schemas/                  versioned data contracts, including reviewer, approval and OIDC identity trust
+docs/                     architecture, safety, assurance, operator, release and trust workflow
 examples/                 source-tree synthetic reserved-namespace inputs
-tests/                    policy, integrity, trust, approval, packaging, and end-to-end tests
+tests/                    policy, integrity, trust, approval, OIDC, packaging, and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -452,10 +504,13 @@ against configured public keys and exact engagement/object bindings. v0.7.1
 separately verifies business-risk-owner and report-approver signatures using
 dedicated approval trust roots and context-bound object digests.
 
-These cryptographic checks still do **not** prove that an upstream OIDC/JWKS,
-SAML, MFA, device-posture or institutional-directory authentication ceremony
-occurred. FinRedOps also does not automatically issue, deliver or submit an
-approved report.
+v0.7.2 can additionally prove that a supplied external OIDC ID token was
+cryptographically validated against pinned provider policy and supplied JWKS,
+and that its `sub` + FinRedOps role claims were exactly bound to signed workflow
+identities. It does **not** fetch or continuously refresh IdP metadata, interpret
+the business meaning of an ACR value, validate SAML/device posture, or prove
+regulatory acceptance. FinRedOps also does not automatically issue, deliver or
+submit an approved report.
 
 ## Reference baseline
 
@@ -476,12 +531,17 @@ The design and analysis model are informed by, but do not claim conformance with
 - [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
 - [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
 - [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)
+- [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
+- [RFC 7517 — JSON Web Key](https://www.rfc-editor.org/rfc/rfc7517)
+- [RFC 7519 — JSON Web Token](https://www.rfc-editor.org/rfc/rfc7519)
+- [RFC 8725 — JWT Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725)
 
 Key documentation:
 
 - [Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)
 - [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
 - [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
+- [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)

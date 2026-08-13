@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 
+from .oidc_cli import OIDC_COMMANDS, oidc_help, run_oidc_command
 from .operator_cli import entrypoint as operator_entrypoint
 from .signed_approval_cli import (
     SIGNED_APPROVAL_COMMANDS,
@@ -19,9 +20,12 @@ def entrypoint(argv: list[str] | None = None) -> int:
         return run_trust_command(raw)
     if raw and raw[0] in SIGNED_APPROVAL_COMMANDS:
         return run_signed_approval_command(raw)
+    if raw and raw[0] in OIDC_COMMANDS:
+        return run_oidc_command(raw)
     if raw and raw[0] in {"-h", "--help"}:
         result = operator_entrypoint(raw)
         print(trust_help(), end="")
         print(signed_approval_help(), end="")
+        print(oidc_help(), end="")
         return result
     return operator_entrypoint(raw)
