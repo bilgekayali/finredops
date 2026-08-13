@@ -1,9 +1,9 @@
 """Independent, verification-only change control for tenant and service-account policy.
 
-FinRedOps never stores change-approver private keys. Two distinct human subjects,
-one ``configuration_governor`` and one ``security_governor``, must sign the exact
-change-request digest before a production-facing policy or service-account mapping
-can be consumed by the guarded CLI paths.
+FinRedOps never stores change-approver private keys. Two distinct trust-pinned human
+subjects, one ``configuration_governor`` and one ``security_governor``, must sign
+the exact change-request digest before a production-facing policy or service-account
+mapping can be consumed by the guarded CLI paths.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import binascii
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Mapping, Sequence
 
 from cryptography.exceptions import InvalidSignature
@@ -103,6 +103,7 @@ def _signature_id(core: Mapping[str, Any]) -> str:
 @dataclass(frozen=True, slots=True)
 class ChangeTrustKey:
     issuer: str
+    subject: str
     key_id: str
     public_key: str
     role: str
@@ -113,6 +114,7 @@ class ChangeTrustKey:
 
     def __post_init__(self) -> None:
         _identifier(self.issuer, "issuer")
+        _identifier(self.subject, "subject")
         _identifier(self.key_id, "key_id")
         if self.role not in _CHANGE_ROLES:
             raise ChangeControlError("Change trust key role is unsupported.")
@@ -150,6 +152,9 @@ class ChangeTrustBundle:
         identities = [(item.issuer, item.key_id) for item in self.keys]
         if len(set(identities)) != len(identities):
             raise ChangeControlError("Change trust bundle key identities must be unique.")
+        public_keys = [item.public_key for item in self.keys]
+        if len(set(public_keys)) != len(public_keys):
+            raise ChangeControlError("Change trust bundle cannot reuse one public key under multiple identities.")
         active_roles = {item.role for item in self.keys if item.status == "active"}
         if active_roles != _CHANGE_ROLES:
             raise ChangeControlError(
@@ -186,6 +191,7 @@ def change_trust_bundle_from_document(document: Any) -> ChangeTrustBundle:
         raise ChangeControlError("Change trust bundle keys must be an array.")
     key_fields = {
         "issuer",
+        "subject",
         "key_id",
         "public_key",
         "role",
@@ -201,6 +207,7 @@ def change_trust_bundle_from_document(document: Any) -> ChangeTrustBundle:
         keys.append(
             ChangeTrustKey(
                 issuer=str(raw["issuer"]),
+                subject=str(raw["subject"]),
                 key_id=str(raw["key_id"]),
                 public_key=str(raw["public_key"]),
                 role=str(raw["role"]),
@@ -309,6 +316,7 @@ def build_change_request(
     requested_at: datetime,
     valid_until: datetime,
 ) -> ChangeRequest:
+    normalized_reason = _text(reason, "reason", 1024)
     body = {
         "institution_id": institution_id,
         "change_type": change_type,
@@ -318,7 +326,7 @@ def build_change_request(
         "after_digest": after_digest,
         "context_digest": context_digest,
         "requested_by": requested_by,
-        "reason": reason,
+        "reason": normalized_reason,
         "requested_at": ensure_aware(requested_at),
         "valid_until": ensure_aware(valid_until),
     }
@@ -459,7 +467,7 @@ def change_signature_request(
     )
     if probe.issued_at < request.requested_at or probe.issued_at > request.valid_until:
         raise ChangeControlError("Change signature issuance must fall within the request window.")
-    if probe.expires_at > request.valid_until + __import__("datetime").timedelta(seconds=_CLOCK_SKEW_SECONDS):
+    if probe.expires_at > request.valid_until + timedelta(seconds=_CLOCK_SKEW_SECONDS):
         raise ChangeControlError("Change signature expiry exceeds the request approval window.")
     return probe.signing_document()
 
@@ -517,6 +525,7 @@ def _verify_change_signature(
     key = bundle.get(signature.issuer, signature.key_id)
     checks = (
         (key.status == "active", "trust-key status"),
+        (key.subject == signature.subject, "subject"),
         (key.role == signature.role, "role"),
         (key.algorithm == signature.algorithm, "algorithm"),
         (signature.institution_id == request.institution_id, "institution"),
@@ -563,7 +572,7 @@ class ChangeControlResolution:
         if len(self.signature_ids) != 2 or len(set(self.signature_ids)) != 2:
             raise ChangeControlError("Change resolution requires exactly two unique signatures.")
         if len(self.subjects) != 2 or len(set(self.subjects)) != 2:
-            raise ChangeControlError("Change resolution requires two distinct human subjects.")
+            raise ChangeControlError("Change resolution requires two distinct trust-pinned subjects.")
         if set(self.roles) != _CHANGE_ROLES or len(self.roles) != 2:
             raise ChangeControlError("Change resolution requires both independent governor roles.")
         object.__setattr__(self, "signature_ids", tuple(sorted(self.signature_ids)))
@@ -649,7 +658,7 @@ def resolve_change_control(
     if len(set(ids)) != 2 or len(set(identities)) != 2:
         raise ChangeControlError("Change signatures must use two distinct trust keys.")
     if len(set(subjects)) != 2:
-        raise ChangeControlError("Change approvals require two distinct human subjects.")
+        raise ChangeControlError("Change approvals require two distinct trust-pinned subjects.")
     if set(roles) != _CHANGE_ROLES or len(roles) != 2:
         raise ChangeControlError("Change approvals require one signature from each governor role.")
     for signature in signatures:
@@ -676,7 +685,9 @@ def approved_change_package(
     body = {
         "schema_version": "finredops.approved-change-package.v1",
         "change_request": request.as_dict(),
-        "signatures": [item.as_dict() for item in sorted(signatures, key=lambda item: item.signature_id)],
+        "signatures": [
+            item.as_dict() for item in sorted(signatures, key=lambda item: item.signature_id)
+        ],
         "resolution": resolution.as_dict(),
         "change_authorized": True,
     }
@@ -697,7 +708,10 @@ def verify_approved_change_package(
     }
     if not isinstance(document, Mapping) or set(document) != required:
         raise ChangeControlError("Approved change package does not match the v1 contract.")
-    if document["schema_version"] != "finredops.approved-change-package.v1" or document["change_authorized"] is not True:
+    if (
+        document["schema_version"] != "finredops.approved-change-package.v1"
+        or document["change_authorized"] is not True
+    ):
         raise ChangeControlError("Approved change package safety markers are invalid.")
     body = {key: document[key] for key in required if key != "package_digest"}
     if document["package_digest"] != sha256_digest(body):
