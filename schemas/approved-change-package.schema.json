@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/approved-change-package.schema.json",
+  "title": "FinRedOps Approved Change Package v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "change_request", "signatures", "resolution", "change_authorized", "package_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.approved-change-package.v1"},
+    "change_request": {"$ref": "change-request.schema.json"},
+    "signatures": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "change-signature.schema.json"}
+    },
+    "resolution": {"$ref": "change-control-resolution.schema.json"},
+    "change_authorized": {"const": true},
+    "package_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
