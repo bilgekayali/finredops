@@ -172,7 +172,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] KMS/HSM-backed execution-receipt signatures bind proposal/evidence/lifecycle digests;
 - [x] strict envelope and key-backed-signature JSON schemas plus Python 3.11/3.12/3.13 regression coverage;
 - [ ] built-in Azure Key Vault, Google Cloud KMS and PKCS#11 adapters;
-- [ ] externally anchored/timestamped audit heads;
+- [x] externally anchored/timestamped audit heads via the v0.8.5 provider-neutral boundary;
 
 ## v0.8.2 — authenticated tenant routing and authorization
 
@@ -230,11 +230,13 @@ implemented, tested, documented and reviewed.
 
 ### v0.8.5 — immutable external audit anchoring
 
-- [ ] publish signed audit-head commitments to an append-only external anchoring boundary;
-- [ ] bind anchor identity, institution, audit head, event count, timestamp and source artifact digest;
-- [ ] verify anchor receipt independently from the local database and KMS/HSM evidence;
-- [ ] fail closed on reordered, stale, missing or cross-institution anchor receipts;
-- [ ] keep anchoring independent from report issuance and active security-testing authority.
+- [x] publish institution-signed audit-head commitments through a provider-neutral external anchoring boundary;
+- [x] bind anchor receipt identity plus institution, engagement, audit head, event count, anchor timestamp and exact source/signature digests;
+- [x] verify signed anchor receipts offline under a trust root independent from the local database and institution KMS/HSM keys;
+- [x] fail closed on reordered, continuity-missing, duplicate, backwards-time, disabled-key and cross-institution receipts when the required continuity state is supplied;
+- [x] keep anchoring independent from report issuance and active security-testing authority;
+- [x] provide a pinned-HTTPS client adapter and a separately operated signed append-only reference authority;
+- [x] explicitly do not claim that the reference SQLite authority is physical WORM storage, a Byzantine transparency service, RFC 6962 compatibility or Rekor protocol compatibility.
 
 ### v0.9.0 — evidence vault lifecycle
 
@@ -292,7 +294,7 @@ candidate additionally has:
 - [x] authenticated application-layer tenant routing and capability authorization;
 - [x] PostgreSQL database-engine RLS and service-account production boundary;
 - [x] policy bundle signatures and independent change approval;
-- [ ] immutable external audit anchoring;
+- [x] independent external audit anchoring contract with signed receipt-chain verification;
 - [ ] evidence-vault integration, retention, legal hold and deletion policy;
 - [ ] independent legal, accessibility and security review.
 
