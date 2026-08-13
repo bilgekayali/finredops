@@ -1,0 +1,64 @@
+name: Audit Anchor Boundary
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-anchor-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Verify anchor commands are packaged
+        run: |
+          python -m finredops --help | grep -q "verify-audit-anchor-receipt"
+          python -m finredops --help | grep -q "verify-audit-anchor-chain"
+
+      - name: Enforce offline anchor capability boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          offline = (
+              "anchor_models.py",
+              "anchor_verify.py",
+              "anchor_source.py",
+              "anchor_cli.py",
+              "reference_anchor.py",
+          )
+          forbidden = {"asyncio", "http", "jwt", "requests", "socket", "subprocess", "urllib"}
+          for name in offline:
+              path = Path("src/finredops") / name
+              tree = ast.parse(path.read_text(encoding="utf-8"))
+              imported = set()
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      imported.update(alias.name.split(".")[0] for alias in node.names)
+                  elif isinstance(node, ast.ImportFrom):
+                      imported.add((node.module or "").split(".")[0])
+              unexpected = sorted(imported & forbidden)
+              if unexpected:
+                  raise SystemExit(f"offline anchor module imports forbidden capability: {name}: {unexpected}")
+
+          source = Path("src/finredops/anchor_http.py").read_text(encoding="utf-8")
+          for required in ('parsed.scheme != "https"', "_NoRedirect", "HTTPSHandler(context="):
+              if required not in source:
+                  raise SystemExit(f"anchor HTTPS adapter lost required guard: {required}")
+          if "anchor_http" in Path("src/finredops/anchor_verify.py").read_text(encoding="utf-8"):
+              raise SystemExit("offline anchor verifier must not import network adapter")
+          PY
+
+      - name: Run audit anchoring regression tests
+        run: python -m unittest tests.test_audit -v
