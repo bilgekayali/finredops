@@ -13,7 +13,6 @@ import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from finredops.entrypoint import entrypoint
-from finredops.models import sha256_digest
 from finredops.oidc_identity import (
     OIDCIdentityError,
     bind_oidc_identity,
@@ -68,10 +67,11 @@ class OIDCFixture:
         algorithm: str = "RS256",
         auth_time: int | None = None,
         kid: str = KID,
+        issuer: str = ISSUER,
     ) -> str:
         now = int(AS_OF.timestamp())
         payload = {
-            "iss": ISSUER,
+            "iss": issuer,
             "sub": subject,
             "aud": audience,
             "iat": now - 300,
@@ -146,6 +146,28 @@ class OIDCIdentityTests(unittest.TestCase):
         self.assertTrue(document["external_idp_protocol_verified"])
         self.assertFalse(document["raw_id_token_retained"])
         self.assertNotIn(token, json.dumps(document))
+
+    def test_issuer_is_exact_and_preserves_trailing_slash(self) -> None:
+        issuer = ISSUER + "/"
+        provider = {**self.fixture.provider_document, "issuer": issuer}
+        config = provider_config_from_document(provider)
+        self.assertEqual(config.issuer, issuer)
+        result = verify_oidc_id_token(
+            self.fixture.token(issuer=issuer),
+            config,
+            self.fixture.jwks,
+            expected_nonce=NONCE,
+            as_of=AS_OF,
+        )
+        self.assertEqual(result.issuer, issuer)
+        with self.assertRaises(OIDCIdentityError):
+            verify_oidc_id_token(
+                self.fixture.token(issuer=ISSUER),
+                config,
+                self.fixture.jwks,
+                expected_nonce=NONCE,
+                as_of=AS_OF,
+            )
 
     def test_algorithm_nonce_key_and_auth_age_fail_closed(self) -> None:
         with self.assertRaises(OIDCIdentityError):
