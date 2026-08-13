@@ -93,6 +93,7 @@ class ChangeControlTests(unittest.TestCase):
             keys=(
                 ChangeTrustKey(
                     issuer="bank-a-change-ca",
+                    subject="config-governor-user",
                     key_id="config-2026",
                     public_key=_public(self.config_private),
                     role="configuration_governor",
@@ -101,6 +102,7 @@ class ChangeControlTests(unittest.TestCase):
                 ),
                 ChangeTrustKey(
                     issuer="bank-a-change-ca",
+                    subject="security-governor-user",
                     key_id="security-2026",
                     public_key=_public(self.security_private),
                     role="security_governor",
@@ -200,18 +202,51 @@ class ChangeControlTests(unittest.TestCase):
                 approved_at=NOW + timedelta(minutes=5),
             )
 
-    def test_same_human_subject_cannot_fill_both_governor_roles(self) -> None:
+    def test_signature_subject_must_match_trust_pinned_subject(self) -> None:
         request = self._tenant_request()
-        signatures = (
-            self._sign(request, role="configuration_governor", subject="same-user"),
-            self._sign(request, role="security_governor", subject="same-user"),
+        wrong_subject_signature = self._sign(
+            request,
+            role="configuration_governor",
+            subject="different-user",
+        )
+        valid_security = self._sign(
+            request,
+            role="security_governor",
+            subject="security-governor-user",
         )
         with self.assertRaises(ChangeControlError):
             approved_change_package(
                 request,
-                signatures,
+                (wrong_subject_signature, valid_security),
                 self.bundle,
                 approved_at=NOW + timedelta(minutes=5),
+            )
+
+    def test_bundle_rejects_reused_public_key_under_multiple_identities(self) -> None:
+        shared = _public(self.config_private)
+        with self.assertRaises(ChangeControlError):
+            ChangeTrustBundle(
+                bundle_id="unsafe-shared-key-bundle",
+                keys=(
+                    ChangeTrustKey(
+                        issuer="bank-a-change-ca",
+                        subject="config-governor-user",
+                        key_id="config-shared",
+                        public_key=shared,
+                        role="configuration_governor",
+                        not_before=NOW - timedelta(days=1),
+                        not_after=NOW + timedelta(days=1),
+                    ),
+                    ChangeTrustKey(
+                        issuer="bank-a-change-ca",
+                        subject="security-governor-user",
+                        key_id="security-shared",
+                        public_key=shared,
+                        role="security_governor",
+                        not_before=NOW - timedelta(days=1),
+                        not_after=NOW + timedelta(days=1),
+                    ),
+                ),
             )
 
     def test_tampered_or_different_tenant_policy_is_not_covered(self) -> None:
@@ -235,6 +270,7 @@ class ChangeControlTests(unittest.TestCase):
             keys=(
                 ChangeTrustKey(
                     issuer="other-ca",
+                    subject="other-config-user",
                     key_id="config",
                     public_key=_public(other_config),
                     role="configuration_governor",
@@ -243,6 +279,7 @@ class ChangeControlTests(unittest.TestCase):
                 ),
                 ChangeTrustKey(
                     issuer="other-ca",
+                    subject="other-security-user",
                     key_id="security",
                     public_key=_public(other_security),
                     role="security_governor",
