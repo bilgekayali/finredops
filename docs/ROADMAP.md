@@ -153,7 +153,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] institution-owned envelope encryption through a reviewed KMS/HSM provider interface;
 - [x] KMS/HSM-backed audit-chain and receipt signatures;
 - [x] authenticated tenant routing and authorization boundary above the local store;
-- [ ] database-engine row-level security for a production persistence backend;
+- [x] database-engine row-level security for the PostgreSQL production persistence backend;
 
 ## v0.8.1 — KMS/HSM envelope encryption and signed evidence
 
@@ -187,8 +187,24 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] CLI policy-template, authorize, verify, and authorized metadata-read workflows;
 - [x] strict tenant-routing-policy and tenant-authorization JSON schemas;
 - [x] CI boundary prevents token parsing/network capabilities from entering the tenant authorization module;
-- [ ] database-native row-level security and service-account isolation for a production persistence backend;
+- [x] database-native row-level security and service-account isolation for the PostgreSQL production persistence backend;
 - [ ] signed routing-policy bundles with independent configuration-change approval;
+
+## v0.8.3 — PostgreSQL RLS and service-account isolation
+
+- [x] deterministic PostgreSQL schema and NOLOGIN owner/reader/writer boundary-role contract;
+- [x] tenant identity derived from authenticated `session_user` through an administrator-owned role-to-institution registry;
+- [x] no client-selected tenant GUC or per-query tenant override in the RLS trust boundary;
+- [x] runtime LOGIN roles must be non-superuser, non-`BYPASSRLS`, non-owner service accounts;
+- [x] separate read and write group roles with effective privilege verification;
+- [x] `ENABLE ROW LEVEL SECURITY` plus `FORCE ROW LEVEL SECURITY` on snapshots, audit events and idempotency records;
+- [x] tenant-bound SELECT and write-only INSERT policies with no runtime UPDATE/DELETE grants;
+- [x] live catalog verification of role attributes, membership, registry mapping, contract digest, RLS state, policies and privileges;
+- [x] application `AuthorizedTenantSession` bridge independently matches the database-resolved institution and access mode;
+- [x] PostgreSQL persistence requires v0.8.1 institution-owned envelope encryption for protected payloads;
+- [x] PostgreSQL runtime assessment and installation-contract JSON schemas plus operator CLI;
+- [x] live PostgreSQL 17 CI verifies cross-tenant denial, reader/write separation and encrypted persistence;
+- [ ] signed routing-policy and service-account mapping changes with independent approval;
 
 ## Platform hardening
 
@@ -198,10 +214,10 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] institution-owned envelope encryption through KMS/HSM;
 - [x] key-backed audit and receipt signatures;
 - [x] authenticated application-layer tenant routing and capability authorization;
+- [x] PostgreSQL database-engine RLS and service-account production boundary;
 - [ ] immutable external audit anchoring;
 - [ ] evidence-vault integration, retention, legal hold and deletion policy;
 - [ ] policy bundle signatures and independent change approval;
-- [ ] database-engine RLS/service-account production boundary;
 - [ ] independent legal, accessibility and security review.
 
 ## Later — separately reviewed advanced modules
