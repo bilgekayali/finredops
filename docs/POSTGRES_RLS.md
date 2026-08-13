@@ -25,7 +25,9 @@ The boundary roles are created as `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `
 
 Actual LOGIN service accounts are provisioned **outside FinRedOps** by the institution's database/IAM process. FinRedOps does not create, generate, print or retain service-account passwords. An administrator then registers each existing LOGIN role to exactly one institution and either `read` or `write` access.
 
-Runtime verification rejects a service account if it is a superuser, has `BYPASSRLS`, database/role-creation or replication privileges, inherits the owner role, has the wrong read/write group membership, or resolves to a different institution/access mode than expected.
+Runtime verification rejects a service account if it is a superuser, has `BYPASSRLS`, database/role-creation or replication privileges, inherits the owner role, has the wrong read/write group membership, resolves to a different institution/access mode than expected, **or can reach a privileged/owner/`BYPASSRLS` role through PostgreSQL `SET ROLE` membership**.
+
+That last check matters because a safe-looking LOGIN role can otherwise gain different privileges after authentication by changing `current_user`. Both registration SQL and live runtime verification query the role-membership graph and fail closed if the service account has a `SET ROLE` path to a privileged boundary.
 
 ## RLS tables and policies
 
@@ -44,9 +46,9 @@ ALTER TABLE ... FORCE ROW LEVEL SECURITY;
 
 SELECT policies permit only rows whose `institution_id` matches the current authenticated service-account mapping. INSERT policies additionally require a `write` mapping. Runtime roles receive no UPDATE or DELETE privileges.
 
-The `tenant_service_accounts` registry is not readable by runtime reader/writer roles. Tenant resolution is exposed only through narrowly scoped `SECURITY DEFINER` functions with an explicit search path.
+The `tenant_service_accounts` registry is not readable by runtime reader/writer roles. Tenant resolution is exposed only through narrowly scoped `SECURITY DEFINER` functions with an explicit search path. The registry also enforces the same bounded institution-id shape as the application contract.
 
-PostgreSQL superusers and roles with `BYPASSRLS` can bypass row security by design; table owners also normally bypass it unless row security is forced. FinRedOps therefore uses `FORCE ROW LEVEL SECURITY` and refuses privileged runtime roles. Privileged DBA, backup and recovery operations remain outside the tenant-runtime isolation claim.
+PostgreSQL superusers and roles with `BYPASSRLS` can bypass row security by design; table owners also normally bypass it unless row security is forced. FinRedOps therefore uses `FORCE ROW LEVEL SECURITY`, refuses privileged runtime roles, and rejects a service account that can `SET ROLE` to such a role. Privileged DBA, backup and recovery operations remain outside the tenant-runtime isolation claim.
 
 ## Envelope encryption remains mandatory
 
@@ -79,7 +81,7 @@ finredops postgres-service-account-sql \
   --output bank-a-writer.sql
 ```
 
-The mapping operation verifies that the role already exists and is a LOGIN role without dangerous PostgreSQL role attributes. It revokes FinRedOps owner/reader/writer memberships and then grants exactly the selected runtime group role before updating the registry.
+The mapping operation verifies that the role already exists and is a LOGIN role without dangerous PostgreSQL role attributes or a privileged `SET ROLE` path. It revokes FinRedOps owner/reader/writer memberships and then grants exactly the selected runtime group role before updating the registry.
 
 Disable a mapping with:
 
@@ -107,8 +109,9 @@ The DSN is deliberately read from an environment variable instead of a command-l
 
 The verifier checks:
 
-- `session_user == current_user` so a changed `SET ROLE` identity is not accepted;
+- `session_user == current_user` so an already changed `SET ROLE` identity is not accepted;
 - unsafe PostgreSQL role attributes are absent;
+- no privileged/owner/`BYPASSRLS` role is reachable with `SET ROLE`;
 - exact reader-only or writer-only boundary membership;
 - no owner-role membership;
 - exact institution/access mapping from the administrator-owned registry;
@@ -121,7 +124,8 @@ Only after those checks pass does the assessment set:
 
 - `database_rls_verified: true`;
 - `service_account_isolation_verified: true`;
-- `rls_bypass_role_verified_absent: true`.
+- `rls_bypass_role_verified_absent: true`;
+- `privileged_set_role_path_verified_absent: true`.
 
 ## Application authorization bridge
 
@@ -139,6 +143,7 @@ The repository runs a live PostgreSQL 17 service in CI. The integration suite pr
 - bank-A writer cannot insert a bank-B row;
 - bank-B writer cannot see bank-A rows;
 - bank-A reader cannot insert;
+- a reader that is granted a `SET ROLE` path to a synthetic `BYPASSRLS` role is rejected;
 - encrypted snapshot/audit/idempotency persistence works through the verified store;
 - stored snapshot payload is `envelope_v1` rather than plaintext;
 - wrong expected institution or access mode fails closed.
@@ -165,4 +170,4 @@ The existing FinRedOps execution boundary is unchanged: simulation remains the d
 
 ## Reference
 
-PostgreSQL row-security semantics and role attributes should be validated against the version deployed by the institution. The FinRedOps integration suite currently exercises PostgreSQL 17.
+PostgreSQL row-security, role-membership and `SET ROLE` semantics should be validated against the version deployed by the institution. The FinRedOps integration suite currently exercises PostgreSQL 17.
