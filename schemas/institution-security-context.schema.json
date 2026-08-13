@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/institution-security-context.schema.json",
+  "title": "FinRedOps Institution Security Context v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "institution_id",
+    "institution_name",
+    "key_references",
+    "context_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.institution-security-context.v1"},
+    "institution_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/+~-]{0,199}$"
+    },
+    "institution_name": {"type": "string", "minLength": 1, "maxLength": 256},
+    "key_references": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key_id",
+          "purpose",
+          "provider",
+          "key_ref",
+          "status",
+          "institution_owned",
+          "public_key_fingerprint"
+        ],
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/+~-]{0,199}$"
+          },
+          "purpose": {
+            "enum": ["data_encryption", "audit_signing", "workload_identity"]
+          },
+          "provider": {
+            "enum": [
+              "aws_kms",
+              "azure_key_vault",
+              "gcp_kms",
+              "pkcs11",
+              "external_hsm",
+              "other"
+            ]
+          },
+          "key_ref": {"type": "string", "minLength": 1, "maxLength": 1024},
+          "status": {"enum": ["active", "retiring", "disabled"]},
+          "institution_owned": {"const": true},
+          "public_key_fingerprint": {
+            "anyOf": [
+              {"type": "null"},
+              {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            ]
+          }
+        }
+      }
+    },
+    "context_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
