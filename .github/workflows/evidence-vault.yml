@@ -1,0 +1,68 @@
+name: Evidence Vault Boundary
+
+on:
+  push:
+    paths:
+      - "src/finredops/vault_*.py"
+      - "src/finredops/evidence_vault.py"
+      - "tests/test_vault_lifecycle.py"
+      - "schemas/*vault*.json"
+      - ".github/workflows/evidence-vault.yml"
+  pull_request:
+    paths:
+      - "src/finredops/vault_*.py"
+      - "src/finredops/evidence_vault.py"
+      - "tests/test_vault_lifecycle.py"
+      - "schemas/*vault*.json"
+      - ".github/workflows/evidence-vault.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-vault-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Run evidence vault lifecycle tests
+        run: python -m unittest tests.test_vault_lifecycle -v
+      - name: Enforce offline and non-destructive vault boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          files = [
+              Path("src/finredops/vault_common.py"),
+              Path("src/finredops/vault_custody.py"),
+              Path("src/finredops/vault_history.py"),
+              Path("src/finredops/vault_bundle.py"),
+              Path("src/finredops/evidence_vault.py"),
+              Path("src/finredops/vault_store.py"),
+          ]
+          forbidden_imports = {"socket", "subprocess", "requests", "urllib", "http.client"}
+          forbidden_methods = {"delete", "destroy", "purge", "sanitize"}
+
+          for path in files:
+              tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      names = {item.name for item in node.names}
+                      if names & forbidden_imports:
+                          raise SystemExit(f"forbidden vault import in {path}: {names & forbidden_imports}")
+                  if isinstance(node, ast.ImportFrom) and node.module:
+                      if node.module in forbidden_imports or node.module.split(".")[0] in forbidden_imports:
+                          raise SystemExit(f"forbidden vault import in {path}: {node.module}")
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in forbidden_methods:
+                      raise SystemExit(f"destructive vault method is forbidden: {path}:{node.name}")
+
+          store_text = Path("src/finredops/vault_store.py").read_text(encoding="utf-8").upper()
+          for statement in ("DELETE FROM EVIDENCE_VAULT_", "UPDATE EVIDENCE_VAULT_"):
+              if statement in store_text:
+                  raise SystemExit(f"destructive/mutable vault SQL is forbidden: {statement}")
+          PY
