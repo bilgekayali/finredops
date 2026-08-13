@@ -6,6 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .anchor_cli import ANCHOR_COMMANDS, anchor_help, run_anchor_command
 from .institution import (
     InstitutionContextError,
     institution_context_from_document,
@@ -20,7 +21,7 @@ HARDENING_COMMANDS = frozenset(
         "validate-institution-context",
         "verify-tenant-store",
     }
-)
+) | ANCHOR_COMMANDS
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -50,6 +51,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def run_hardening_command(argv: list[str]) -> int:
+    if argv and argv[0] in ANCHOR_COMMANDS:
+        return run_anchor_command(argv)
     args = _parser().parse_args(argv)
     if args.command == "institution-context-template":
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -130,4 +133,5 @@ def hardening_help() -> str:
         "  institution-context-template   create institution-owned key-reference context\n"
         "  validate-institution-context   validate key custody references and context digest\n"
         "  verify-tenant-store            verify an institution-scoped persisted audit chain\n"
+        + anchor_help()
     )

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinRedOps Audit Anchor Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "anchor_id", "sequence", "institution_id", "engagement_id", "commitment_digest", "previous_receipt_digest", "anchored_at", "key_id", "signature_algorithm", "signature", "signing_document_digest", "receipt_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.audit-anchor-receipt.v1"},
+    "anchor_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "sequence": {"type": "integer", "minimum": 1},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "commitment_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "previous_receipt_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "anchored_at": {"type": "string", "format": "date-time"},
+    "key_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "signature_algorithm": {"const": "Ed25519-SHA256-DIGEST"},
+    "signature": {"type": "string", "minLength": 1, "maxLength": 16384},
+    "signing_document_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "receipt_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

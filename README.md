@@ -13,16 +13,17 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.8.4** keeps simulation as the safe default and preserves the
-> bounded active-validation, signed-decision and report-issuance boundaries. It
-> extends v0.8.3 PostgreSQL RLS/service isolation with independent signed
-> configuration change control: tenant-routing policies and PostgreSQL
-> service-account mappings must be bound to an exact create/update/disable state
-> transition and approved by separate `configuration_governor` and
-> `security_governor` trust identities before the production-facing CLI consumes
-> them. The change trust root is separate from reviewer, risk-owner and report
-> approval roots; FinRedOps verifies public-key evidence and stores no approver
-> private keys.
+> **Version 0.8.5** keeps simulation as the safe default and preserves the
+> bounded active-validation, signed-decision, tenant, database-RLS,
+> configuration-change and report-issuance boundaries. It adds an independent
+> external audit-anchor layer: an audit head must first pass the existing
+> institution KMS/HSM signature verification, then an exact commitment can be
+> submitted to a separately operated append-only anchor boundary. Returned
+> receipts are hash-linked, separately Ed25519-signed and offline-verifiable
+> against an anchor trust root that is distinct from institution KMS, reviewer,
+> approval and configuration-change roots. The included SQLite anchor authority
+> is a reference/test implementation, **not** a claim of physical WORM storage
+> or Byzantine transparency.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -75,6 +76,8 @@ flowchart TD
     S --> H
     T["Fresh AES-256-GCM DEK + institution KMS/HSM"] --> S
     H --> U["KMS/HSM-backed audit signature"]
+    U --> AA["External audit commitment"]
+    AA --> AB["Independent signed anchor receipt chain"]
     G --> V["KMS/HSM-backed receipt signature"]
 ```
 
@@ -131,7 +134,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.8.4 behavior |
+| Boundary | v0.8.5 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -161,13 +164,15 @@ sources.
 | Authorized store writes | `store_write` capability plus institution crypto provider required, preventing silent plaintext bypass of v0.8.1 protection |
 | Institution envelope encryption | Fresh per-record AES-256-GCM DEK; DEK wrapped by matching institution KMS/HSM provider; tenant/object context authenticated |
 | Key-backed evidence | Audit-chain and execution-receipt digests can be signed/verified through the institution `audit_signing` key |
+| External audit anchoring | A current KMS/HSM-verified audit head can be commitment-bound to an independent anchor; signed receipts link global sequence, prior receipt digest, institution, engagement and timestamp, and verify offline under a separate public-key trust root |
+| Anchor network boundary | Only the dedicated HTTPS adapter has network capability; offline source/receipt/trust verification modules are CI-guarded from network/process imports |
 | Concrete KMS adapter | AWS KMS `Encrypt`/`Decrypt` + `Sign`/`Verify`; AWS credentials/key policy remain outside FinRedOps |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, promotion and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, audit-anchor verification, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
-| Accountability | Append-only hash chain, optional provider-backed signatures and offline-verifiable artifacts |
+| Accountability | Append-only local hash chain, provider-backed signatures, independent external anchor receipts and offline-verifiable artifacts |
 
 ## v0.6 end-to-end operator workflow
 
@@ -653,8 +658,66 @@ repository can constrain an intentionally privileged database administrator.
 
 See **[Signed configuration change control](docs/CHANGE_CONTROL.md)** for the
 full state-transition model, trust separation and non-claims. The remaining
-release gates from external audit anchoring through v1.0.0 are tracked in
-**[Roadmap](docs/ROADMAP.md)**.
+release gates through v1.0.0 are tracked in **[Roadmap](docs/ROADMAP.md)**.
+
+## v0.8.5 independent external audit anchoring
+
+v0.8.5 adds a trust boundary outside the local persistence and institution KMS/HSM
+administrative domains. `create_verified_audit_anchor_commitment()` first
+re-verifies the current KMS/HSM-backed audit-chain signature. Only that exact
+signed state can be converted into a digest-bound commitment containing the
+institution, engagement, event count, audit head, full audit-document digest,
+signature-target digest, signature-artifact digest and combined source digest.
+If the audit chain changes after signing, commitment creation fails closed.
+
+`AuditAnchorProvider` is the provider-neutral client interface. The included
+`HttpsAuditAnchorProvider` posts one canonical commitment to one exact HTTPS
+endpoint, disables redirects, bounds time and response size, and parses a strict
+receipt contract. It does not retrieve credentials or discover an anchor service.
+Network capability is isolated in that adapter; the source builder, artifact
+models, CLI and receipt verifier remain offline and are protected by a dedicated
+CI import-boundary check.
+
+A receipt binds a global sequence, the previous receipt digest, `anchor_id`,
+institution, engagement, commitment digest, anchor timestamp and anchor signing
+key. It is Ed25519-signed under a trust root separate from institution KMS/HSM,
+reviewer, approval and configuration-change trust. `verify_audit_anchor-chain`
+rejects reordered history, broken previous-digest continuity, duplicate
+commitments, backwards time and invalid/disabled/out-of-window signing keys.
+Single-receipt verification can additionally pin an expected sequence and prior
+receipt digest.
+
+Offline operator verification:
+
+```bash
+finredops validate-audit-anchor-commitment work/audit-anchor-commitment.json
+finredops validate-audit-anchor-trust-bundle trust/audit-anchor-trust.json
+finredops verify-audit-anchor-receipt \
+  work/audit-anchor-commitment.json \
+  work/audit-anchor-receipt.json \
+  trust/audit-anchor-trust.json
+finredops verify-audit-anchor-chain \
+  work/audit-anchor-receipts.jsonl \
+  trust/audit-anchor-trust.json
+```
+
+`ReferenceAppendOnlyAnchorAuthority` is intentionally a small **service-side**
+reference implementation for CI and isolated reference deployments. It serializes
+append writers, assigns global sequence numbers, links receipts and exposes no
+update/delete API. Its SQLite file is **not** physical WORM storage and is not a
+Byzantine transparency service: a privileged storage administrator can still
+destroy or rewrite it. Stronger deployments should operate the anchor under a
+separate administrative domain and use immutable/WORM storage, external
+witnessing, a transparency-log service, or equivalent controls. FinRedOps v0.8.5
+also does not claim RFC 6962 or Sigstore Rekor wire-protocol compatibility.
+
+External anchoring is evidence-integrity infrastructure only. It does not
+authorize testing, expand scope/capabilities, approve risk, issue reports,
+determine regulatory applicability or certify compliance.
+
+See **[External audit anchoring](docs/AUDIT_ANCHORING.md)** for the receipt
+contract, trust model, continuity requirements, transport boundary and explicit
+non-claims.
 
 ## Reproduce the reviewed-report demo from an installed wheel
 
@@ -694,7 +757,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.8.4-py3-none-any.whl \
+gh attestation verify finredops-0.8.5-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -753,10 +816,17 @@ src/finredops/
   aws_kms.py              AWS KMS production adapter
   envelope.py             per-record AES-256-GCM envelope encryption
   signed_evidence.py      KMS/HSM-backed audit-chain and receipt signatures
-  hardening_cli.py        v0.8 tenant/key-boundary operator commands
+  anchor_models.py        strict external anchor commitment/trust/receipt artifacts
+  anchor_provider.py      provider-neutral external anchor client interface
+  anchor_source.py        KMS/HSM-verified audit state to exact anchor commitment
+  anchor_verify.py        offline external receipt and receipt-chain verification
+  anchor_http.py          pinned-HTTPS external anchor client adapter
+  reference_anchor.py     service-side signed append-only reference authority
+  anchor_cli.py           offline anchor artifact verification commands
+  hardening_cli.py        v0.8 tenant/key/anchor-boundary operator commands
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
-  entrypoint.py           top-level operator/trust/approval/OIDC/change/tenant/PostgreSQL router
+  entrypoint.py           top-level operator/trust/approval/OIDC/change/tenant/PostgreSQL/hardening router
   release_integrity.py    packaged examples and strict local checksum verification
   examples/               installed-wheel synthetic engagement, plan, and SARIF
   evidence.py             sensitive-data minimization boundary
@@ -772,10 +842,9 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope and evidence contracts
-docs/                     architecture, safety, assurance, operator, release, trust, change-control, tenant and PostgreSQL hardening workflow
-examples/                 source-tree synthetic reserved-namespace inputs
-tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant authorization, PostgreSQL RLS, KMS/envelope, packaging and end-to-end tests
+schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor and evidence contracts
+docs/                     architecture, safety, assurance, operator, release, trust, change-control, tenant, PostgreSQL and external-anchor workflow
+tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant authorization, PostgreSQL RLS, KMS/envelope, anchor, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -805,9 +874,8 @@ v0.8.1 can perform real application-layer envelope encryption and provider-backe
 audit/receipt signing when a matching `KmsHsmProvider` is configured. The AWS KMS
 adapter is built in; other KMS/HSM families require separate adapter
 implementations. FinRedOps does not claim that a configured key reference proves
-correct IAM/key policy, does not create/export institution keys, cannot guarantee
-zeroization of every transient Python byte copy, and does not yet provide
-external immutable audit anchoring.
+correct IAM/key policy, does not create/export institution keys, and cannot
+guarantee zeroization of every transient Python byte copy.
 
 v0.8.2 authorizes one verified OIDC subject/provider configuration to one
 institution through a digest-bound routing policy and closed capability set. It
@@ -831,6 +899,16 @@ A privileged DBA or direct low-level library caller remains outside the guarded
 CLI governance claim. FinRedOps also does not automatically issue, deliver or
 submit an approved report.
 
+v0.8.5 can bind a current institution-KMS/HSM-verified audit state to a separate
+signed anchor receipt chain. This improves cross-boundary tamper evidence but is
+not equivalent to a trusted timestamp authority, physical WORM storage, a
+Byzantine transparency system, or an automatically witnessed public log. The
+reference SQLite authority can be rewritten by a sufficiently privileged host or
+storage administrator. Truncation detection requires independently retained
+continuity state or a complete observed receipt stream. Production independence,
+anchor availability, storage immutability, witnessing, key custody and service
+authentication remain deployment responsibilities.
+
 ## Reference baseline
 
 The design and analysis model are informed by, but do not claim conformance with:
@@ -844,7 +922,7 @@ The design and analysis model are informed by, but do not claim conformance with
 - [NIST SP 800-115 — Technical Guide to Information Security Testing and Assessment](https://csrc.nist.gov/pubs/sp/800/115/final)
 - [NIST SP 800-38D — GCM authenticated encryption](https://csrc.nist.gov/pubs/sp/800/38/d/final)
 - [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
-- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project/application-security-verification-standard/)
 - [GDPR — Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
 - [DORA — Regulation (EU) 2022/2554](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)
 - [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
@@ -857,6 +935,8 @@ The design and analysis model are informed by, but do not claim conformance with
 - [RFC 8725 — JWT Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725)
 - [PostgreSQL Row Security Policies](https://www.postgresql.org/docs/17/ddl-rowsecurity.html)
 - [PostgreSQL Database Roles / role attributes](https://www.postgresql.org/docs/17/database-roles.html)
+- [RFC 6962 — Certificate Transparency](https://www.rfc-editor.org/rfc/rfc6962)
+- [Sigstore Rekor transparency log](https://docs.sigstore.dev/logging/overview/)
 
 Key documentation:
 
@@ -869,6 +949,7 @@ Key documentation:
 - [Institution-owned KMS/HSM envelope encryption and evidence signatures](docs/KMS_ENVELOPE_SIGNING.md)
 - [Authenticated tenant routing and authorization](docs/TENANT_AUTHORIZATION.md)
 - [PostgreSQL RLS and service-account boundary](docs/POSTGRES_RLS.md)
+- [External audit anchoring](docs/AUDIT_ANCHORING.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)
