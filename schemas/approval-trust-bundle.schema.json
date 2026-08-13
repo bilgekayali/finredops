@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/approval-trust-bundle.schema.json",
+  "title": "FinRedOps Approval Trust Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "bundle_id", "keys"],
+  "properties": {
+    "schema_version": {"const": "finredops.approval-trust-bundle.v1"},
+    "bundle_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issuer", "key_id", "algorithm", "public_key", "roles", "not_before", "not_after"],
+        "properties": {
+          "issuer": {"type": "string", "minLength": 1, "maxLength": 200},
+          "key_id": {"type": "string", "minLength": 1, "maxLength": 200},
+          "algorithm": {"const": "Ed25519"},
+          "public_key": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+          "roles": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"enum": ["business_risk_owner", "report_approver"]}
+          },
+          "not_before": {"type": "string", "format": "date-time"},
+          "not_after": {"type": "string", "format": "date-time"}
+        }
+      }
+    }
+  }
+}
