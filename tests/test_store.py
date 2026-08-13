@@ -148,7 +148,7 @@ class StoreTests(unittest.TestCase):
             connection.close()
 
             with SQLiteGovernanceStore(path) as store:
-                self.assertEqual(store.metadata()["schema_version"], 2)
+                self.assertEqual(store.metadata()["schema_version"], 3)
                 self.assertEqual(store.load_latest(engagement_id), snapshot)
             with SQLiteGovernanceStore(path, institution_id="bank-other") as store:
                 self.assertIsNone(store.load_latest(engagement_id))
