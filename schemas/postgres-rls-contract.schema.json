@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/postgres-rls-contract.schema.json",
+  "title": "FinRedOps PostgreSQL RLS Contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_name",
+    "owner_role",
+    "reader_role",
+    "writer_role",
+    "tenant_source",
+    "runtime_roles_require_nobypassrls",
+    "force_row_level_security",
+    "tables",
+    "contract_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.postgres-rls-contract.v1"},
+    "schema_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$"},
+    "owner_role": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$"},
+    "reader_role": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$"},
+    "writer_role": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$"},
+    "tenant_source": {"const": "session_user_registry"},
+    "runtime_roles_require_nobypassrls": {"const": true},
+    "force_row_level_security": {"const": true},
+    "tables": {
+      "type": "array",
+      "prefixItems": [
+        {"const": "engagement_snapshots"},
+        {"const": "audit_events"},
+        {"const": "idempotency_records"}
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "contract_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
