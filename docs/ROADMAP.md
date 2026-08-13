@@ -240,11 +240,12 @@ implemented, tested, documented and reviewed.
 
 ### v0.9.0 — evidence vault lifecycle
 
-- [ ] institution-scoped encrypted evidence-vault interface;
-- [ ] retention schedules and immutable legal-hold state;
-- [ ] deletion eligibility separated from destructive deletion execution;
-- [ ] custody events for ingest, access, export, hold, release and deletion approval;
-- [ ] recovery/restore semantics that preserve tenant, encryption and custody boundaries.
+- [x] institution-scoped encrypted evidence-vault interface;
+- [x] retention schedules and immutable legal-hold state derived from append-only custody;
+- [x] lifecycle eligibility separated from physical storage disposition;
+- [x] custody events for ingest, access, export, hold, release, retention extension, disposition approval and restore;
+- [x] recovery/restore semantics that preserve tenant, encryption and custody boundaries;
+- [x] dedicated offline/non-destructive vault CI boundary and strict artifact schemas.
 
 ### v0.9.1 — assurance completeness
 
@@ -295,7 +296,7 @@ candidate additionally has:
 - [x] PostgreSQL database-engine RLS and service-account production boundary;
 - [x] policy bundle signatures and independent change approval;
 - [x] independent external audit anchoring contract with signed receipt-chain verification;
-- [ ] evidence-vault integration, retention, legal hold and deletion policy;
+- [x] encrypted evidence-vault lifecycle with retention, legal hold and recovery boundaries;
 - [ ] independent legal, accessibility and security review.
 
 ## Later — separately reviewed advanced modules
