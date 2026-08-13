@@ -17,14 +17,14 @@ Configuration-change trust roots are intentionally separate from:
 
 A `qualified_tester`, `review_governor`, `business_risk_owner`, or `report_approver` credential therefore does not automatically authorize configuration changes.
 
-The change trust bundle contains public Ed25519 verification keys only. FinRedOps does not create, import, escrow, rotate, or store approver private keys.
+The change trust bundle contains public Ed25519 verification keys only. FinRedOps does not create, import, escrow, rotate, or store approver private keys. Each trust key also pins one bounded approver `subject`; a signature cannot substitute a different subject at verification time. One public key cannot be registered under multiple change-control identities.
 
 Exactly two approval roles are recognized:
 
 - `configuration_governor`;
 - `security_governor`.
 
-An approved change requires one signature from each role, two distinct key identities, and two distinct human subjects. The same subject cannot satisfy both roles.
+An approved change requires one signature from each role, two distinct key identities, two distinct trust-pinned subjects, and distinct public-key material. The same subject or key cannot satisfy both roles.
 
 ## Change request
 
@@ -47,7 +47,7 @@ Create transitions require a target digest and no prior digest. Update transitio
 
 ## Signatures and resolution
 
-Each approver signs `finredops.change-signature.v1`, which binds the exact change ID and request digest plus issuer, subject, key, role, institution, and validity window.
+Each approver signs `finredops.change-signature.v1`, which binds the exact change ID and request digest plus issuer, trust-pinned subject, key, role, institution, and validity window.
 
 Signatures are Ed25519 and may be valid for at most 24 hours. A change request may remain open for at most seven days.
 
@@ -130,8 +130,10 @@ A service-account mapping follows the same signing and resolution steps after `p
 The resolver or guarded consumer rejects, among other cases:
 
 - missing or extra signatures;
+- a signature subject different from the trust-pinned subject;
 - two signatures from the same subject;
 - two signatures from the same key identity;
+- reuse of one public key under multiple trust identities;
 - duplicate governor role instead of one of each;
 - unknown, disabled, expired, or not-yet-valid trust key at approval time;
 - signature tampering;
@@ -149,6 +151,7 @@ The resolver or guarded consumer rejects, among other cases:
 v0.8.4 does **not** claim:
 
 - private-key custody or HSM enforcement for human change-approver keys;
+- that a trust-bundle `subject` by itself proves HR identity, employment status, or an external IdP session; the institution remains responsible for authoritative key-to-person issuance and lifecycle;
 - automatic enterprise ticket-system integration;
 - automatic reconciliation with GitHub branch protection or CODEOWNERS;
 - prevention of an intentionally privileged DBA changing PostgreSQL outside FinRedOps;
