@@ -16,6 +16,11 @@ from .signed_approval_cli import (
     run_signed_approval_command,
     signed_approval_help,
 )
+from .tenant_auth_cli import (
+    TENANT_AUTH_COMMANDS,
+    run_tenant_auth_command,
+    tenant_auth_help,
+)
 from .trust_cli import TRUST_COMMANDS, run_trust_command, trust_help
 
 
@@ -27,6 +32,8 @@ def entrypoint(argv: list[str] | None = None) -> int:
         return run_signed_approval_command(raw)
     if raw and raw[0] in OIDC_COMMANDS:
         return run_oidc_command(raw)
+    if raw and raw[0] in TENANT_AUTH_COMMANDS:
+        return run_tenant_auth_command(raw)
     if raw and raw[0] in HARDENING_COMMANDS:
         return run_hardening_command(raw)
     if raw and raw[0] in {"-h", "--help"}:
@@ -34,6 +41,7 @@ def entrypoint(argv: list[str] | None = None) -> int:
         print(trust_help(), end="")
         print(signed_approval_help(), end="")
         print(oidc_help(), end="")
+        print(tenant_auth_help(), end="")
         print(hardening_help(), end="")
         return result
     return operator_entrypoint(raw)
