@@ -13,16 +13,16 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.8.3** keeps simulation as the safe default and preserves the
+> **Version 0.8.4** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision and report-issuance boundaries. It
-> extends v0.8.2 authenticated tenant routing with an optional PostgreSQL
-> persistence boundary: tenant identity is independently resolved from the
-> authenticated database `session_user`, runtime accounts are checked for safe
-> role attributes and exact read/write membership, and snapshot/audit/idempotency
-> tables run with enabled + forced row-level security. PostgreSQL protected
-> payloads still require the v0.8.1 institution-owned envelope-encryption path.
-> An application tenant authorization and the database-resolved institution must
-> agree before a PostgreSQL store is returned.
+> extends v0.8.3 PostgreSQL RLS/service isolation with independent signed
+> configuration change control: tenant-routing policies and PostgreSQL
+> service-account mappings must be bound to an exact create/update/disable state
+> transition and approved by separate `configuration_governor` and
+> `security_governor` trust identities before the production-facing CLI consumes
+> them. The change trust root is separate from reviewer, risk-owner and report
+> approval roots; FinRedOps verifies public-key evidence and stores no approver
+> private keys.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -65,9 +65,11 @@ flowchart TD
     M --> P["Two signed report approvers"]
     P --> Q["Approved, not automatically issued"]
     O --> W["Exact-subject + pinned-provider tenant routing policy"]
+    CC["Two independent signed change governors"] --> W
     W --> X["Digest-bound tenant authorization"]
     X --> S["Institution-scoped persistence"]
     X --> Y["Verified PostgreSQL service identity"]
+    CC --> Y
     Y --> Z["FORCE RLS tenant persistence"]
     Z --> S
     S --> H
@@ -129,7 +131,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.8.3 behavior |
+| Boundary | v0.8.4 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -150,6 +152,8 @@ sources.
 | Report approval | Exactly two distinct `report_approver` signatures bound to source draft digest + trusted-promotion digest |
 | Tenant persistence | Store handle binds one institution; snapshots/audit/idempotency use institution-scoped composite keys |
 | Authenticated tenant routing | Verified OIDC provider + pinned provider-config digest + exact subject grant + current policy/context digests + closed capabilities; stored authorization is revalidated before use |
+| Configuration change trust | Dedicated Ed25519 public-key bundle; exact trust-pinned `configuration_governor` + `security_governor` subjects and distinct key material are required |
+| Configuration state transition | Exact institution/object/prior-target/context digests; create/update/disable semantics fail closed; tenant and PostgreSQL operator paths require the approved package |
 | PostgreSQL tenant source | Production DB path resolves institution from authenticated `session_user` through an administrator-owned registry; no client-selected tenant GUC |
 | Database RLS | Snapshot/audit/idempotency tables use PostgreSQL `ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY`; live catalog verification is required before use |
 | Service-account isolation | Exact reader-only or writer-only runtime membership; superuser, `BYPASSRLS`, owner membership and unsafe role attributes fail closed |
@@ -160,7 +164,7 @@ sources.
 | Concrete KMS adapter | AWS KMS `Encrypt`/`Decrypt` + `Sign`/`Verify`; AWS credentials/key policy remain outside FinRedOps |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, authenticated tenant routing, PostgreSQL runtime verification, promotion and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only hash chain, optional provider-backed signatures and offline-verifiable artifacts |
@@ -433,9 +437,10 @@ finredops verify-tenant-store \
   --institution-id bank-a
 ```
 
-Tenant namespaces are supplemented by the authenticated v0.8.2 routing boundary
-and the optional v0.8.3 PostgreSQL database RLS boundary described below. SQLite
-remains the local/demo persistence path rather than the database-engine RLS path.
+Tenant namespaces are supplemented by the authenticated v0.8.2 routing boundary,
+the optional v0.8.3 PostgreSQL database RLS boundary and the v0.8.4 signed
+configuration-change gate described below. SQLite remains the local/demo
+persistence path rather than the database-engine RLS path.
 
 See **[Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)**
 for migration behavior, key custody references, security properties and explicit
@@ -485,7 +490,9 @@ wildcards and implicit membership are not supported. Requested access is limited
 to the closed capability set `store_read`, `store_write`, `audit_verify`, and
 `crypto_use`.
 
-Create a conservative policy template, authorize a route, and revalidate it:
+Create a conservative policy template. In v0.8.4, the finished policy must then
+be independently approved through the change-control workflow before it is used
+to authorize or revalidate a tenant route:
 
 ```bash
 finredops tenant-routing-policy-template \
@@ -493,10 +500,14 @@ finredops tenant-routing-policy-template \
   --oidc-verification oidc-verification.json \
   --output tenant-routing-policy.json
 
+# After tenant-policy-change-request -> two external signatures ->
+# resolve-change-control produces approved-policy-change.json.
 finredops authorize-tenant-route \
   --policy tenant-routing-policy.json \
   --institution-context institution-security-context.json \
   --oidc-verification oidc-verification.json \
+  --change-package approved-policy-change.json \
+  --change-trust-bundle trust/change-control-trust.json \
   --capability store_read \
   --capability audit_verify \
   --as-of 2026-08-13T10:00:00Z \
@@ -507,6 +518,8 @@ finredops verify-tenant-authorization \
   --policy tenant-routing-policy.json \
   --institution-context institution-security-context.json \
   --oidc-verification oidc-verification.json \
+  --change-package approved-policy-change.json \
+  --change-trust-bundle trust/change-control-trust.json \
   --as-of 2026-08-13T10:15:00Z
 ```
 
@@ -517,7 +530,8 @@ expires with the source identity. A saved authorization is not trusted alone:
 current source artifacts are required again. The authorized store session derives
 the institution namespace from those validated bindings, and writes require the
 institution cryptographic provider so the envelope-encryption path cannot be
-silently bypassed.
+silently bypassed. v0.8.4 additionally requires the policy approval package to
+reproduce successfully against its exact historical change trust bundle.
 
 See **[Authenticated tenant routing and authorization](docs/TENANT_AUTHORIZATION.md)**
 for the full policy model, fail-closed rules and production non-claims.
@@ -530,7 +544,9 @@ registry maps one existing LOGIN service role to exactly one institution and one
 access mode. Runtime roles with superuser, `BYPASSRLS`, owner membership or other
 unsafe role attributes are rejected before FinRedOps accepts the connection.
 
-Generate installation and service-account mapping SQL:
+Generate the base installation SQL directly. In v0.8.4, service-account mapping
+or disable SQL additionally requires an exact independently approved change
+package:
 
 ```bash
 finredops postgres-rls-install-sql \
@@ -540,6 +556,8 @@ finredops postgres-service-account-sql \
   --service-role bank_a_finredops_writer \
   --institution bank-a \
   --access write \
+  --change-package approved-service-account-change.json \
+  --change-trust-bundle trust/change-control-trust.json \
   --output bank-a-writer.sql
 ```
 
@@ -569,6 +587,74 @@ independently match the database service account's resolved institution.
 See **[PostgreSQL RLS and service-account boundary](docs/POSTGRES_RLS.md)** for
 the threat model, administrator workflow, live verification and explicit
 privileged-DBA/non-production claims.
+
+## v0.8.4 signed configuration change control
+
+v0.8.4 adds a dedicated change-control trust root for production-facing tenant
+policy and PostgreSQL service-account mapping changes. It is deliberately
+separate from reviewer, business-risk and report-approval keys.
+
+A change request binds the exact institution, object, operation, prior state,
+target state, context digest, requester, rationale and approval window. The
+resolver requires exactly two Ed25519 signatures: one trust-pinned
+`configuration_governor` and one trust-pinned `security_governor`. The subjects,
+key identities and public-key material must be distinct.
+
+Example tenant-policy approval sequence:
+
+```bash
+finredops tenant-policy-change-request \
+  --policy tenant-routing-policy.json \
+  --institution-context institution-security-context.json \
+  --operation create \
+  --requested-by platform-owner \
+  --reason 'Introduce governed tenant routing policy' \
+  --requested-at 2026-08-13T09:00:00Z \
+  --valid-until 2026-08-13T12:00:00Z \
+  --output policy-change-request.json
+
+finredops change-signature-request \
+  --change-request policy-change-request.json \
+  --issuer bank-a-change-ca \
+  --subject config-governor-user \
+  --key-id config-2026 \
+  --role configuration_governor \
+  --issued-at 2026-08-13T09:10:00Z \
+  --expires-at 2026-08-13T10:10:00Z \
+  --output config-signing-request.json
+
+# Repeat for security_governor, sign both requests externally, then finalize.
+finredops resolve-change-control \
+  --change-request policy-change-request.json \
+  --signature config-change-signature.json \
+  --signature security-change-signature.json \
+  --trust-bundle trust/change-control-trust.json \
+  --approved-at 2026-08-13T09:20:00Z \
+  --output approved-policy-change.json
+
+finredops verify-change-control \
+  --package approved-policy-change.json \
+  --trust-bundle trust/change-control-trust.json
+```
+
+Short-lived signature envelopes prove the approval event. The resulting approved
+package remains reproducible by checking the signatures at its recorded
+`approved_at` instant against the exact trust-bundle digest; a valid production
+policy therefore does not expire merely because the approval signature window
+later closes. Historical trust bundles must be retained while historical
+approvals remain authoritative.
+
+The PostgreSQL workflow starts with
+`postgres-service-account-change-request` or
+`postgres-service-account-disable-request`; the approved package is then required
+by the SQL-generation command. A privileged DBA can still act outside FinRedOps,
+so this is an operator-path governance boundary rather than a claim that the
+repository can constrain an intentionally privileged database administrator.
+
+See **[Signed configuration change control](docs/CHANGE_CONTROL.md)** for the
+full state-transition model, trust separation and non-claims. The remaining
+release gates from external audit anchoring through v1.0.0 are tracked in
+**[Roadmap](docs/ROADMAP.md)**.
 
 ## Reproduce the reviewed-report demo from an installed wheel
 
@@ -608,7 +694,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.8.3-py3-none-any.whl \
+gh attestation verify finredops-0.8.4-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -655,11 +741,13 @@ src/finredops/
   signed_approval_cli.py  v0.7.1 signed approval operator commands
   oidc_identity.py        offline OIDC/JWKS verification and signed-identity binding
   oidc_cli.py             v0.7.2 external-IdP operator commands
+  change_control.py       v0.8.4 independent signed configuration state transitions
+  change_control_cli.py   v0.8.4 change-request/signature/resolution operator commands
   tenant_auth.py          exact-subject authenticated tenant authorization and store session
-  tenant_auth_cli.py      v0.8.2 tenant routing policy/authorization commands
+  tenant_auth_cli.py      tenant routing gated by approved v0.8.4 policy changes
   postgres_rls.py         PostgreSQL RLS contract, live verifier and encrypted store
   postgres_tenant.py      application tenant authorization to verified PostgreSQL bridge
-  postgres_cli.py         v0.8.3 RLS/service-account installation and verification commands
+  postgres_cli.py         RLS/runtime commands and approved service-account mapping gate
   institution.py          institution security context and opaque KMS/HSM references
   crypto_provider.py      provider-neutral KMS/HSM wrap/unwrap/sign/verify boundary
   aws_kms.py              AWS KMS production adapter
@@ -668,7 +756,7 @@ src/finredops/
   hardening_cli.py        v0.8 tenant/key-boundary operator commands
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
-  entrypoint.py           top-level operator/trust/approval/OIDC/tenant/PostgreSQL/hardening router
+  entrypoint.py           top-level operator/trust/approval/OIDC/change/tenant/PostgreSQL router
   release_integrity.py    packaged examples and strict local checksum verification
   examples/               installed-wheel synthetic engagement, plan, and SARIF
   evidence.py             sensitive-data minimization boundary
@@ -684,10 +772,10 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned data contracts, including reviewer, approval, OIDC, tenant authorization, PostgreSQL RLS/runtime, institution, envelope and evidence-signature contracts
-docs/                     architecture, safety, assurance, operator, release, trust, tenant and PostgreSQL hardening workflow
+schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope and evidence contracts
+docs/                     architecture, safety, assurance, operator, release, trust, change-control, tenant and PostgreSQL hardening workflow
 examples/                 source-tree synthetic reserved-namespace inputs
-tests/                    policy, integrity, trust, approval, OIDC, tenant authorization, PostgreSQL RLS, KMS/envelope, packaging and end-to-end tests
+tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant authorization, PostgreSQL RLS, KMS/envelope, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -724,17 +812,24 @@ external immutable audit anchoring.
 v0.8.2 authorizes one verified OIDC subject/provider configuration to one
 institution through a digest-bound routing policy and closed capability set. It
 rejects stale policy or institution context, changed provider configuration,
-cross-tenant/provider/subject replay and capability escalation. It does **not**
-provide API-gateway authentication, SCIM/group synchronization, or independently
-signed routing-policy change approval.
+cross-tenant/provider/subject replay and capability escalation. The v0.8.4
+operator path additionally requires that the exact routing policy be covered by
+an independently approved change package.
 
 v0.8.3 adds a PostgreSQL database-engine RLS/service-account boundary and a live
 catalog verification artifact. The runtime claim applies only after the current
 connection passes the verifier. PostgreSQL superuser/DBA, backup/recovery,
 service-account credential provisioning/rotation, pooler isolation, cloud DB
 IAM and KMS IAM/key-policy correctness remain institution responsibilities.
-FinRedOps also does not automatically issue, deliver or submit an approved
-report.
+
+v0.8.4 verifies exact configuration state transitions against a dedicated
+Ed25519 change trust bundle and requires distinct trust-pinned governor subjects,
+key identities and public-key material. The trust-bundle `subject` is an
+institution-issued binding; FinRedOps does not itself prove HR identity,
+employment state, current external IdP session, or approver private-key custody.
+A privileged DBA or direct low-level library caller remains outside the guarded
+CLI governance claim. FinRedOps also does not automatically issue, deliver or
+submit an approved report.
 
 ## Reference baseline
 
@@ -769,6 +864,7 @@ Key documentation:
 - [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
 - [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
 - [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
+- [Signed configuration change control](docs/CHANGE_CONTROL.md)
 - [Tenant isolation and institution-owned key boundaries](docs/TENANT_ISOLATION.md)
 - [Institution-owned KMS/HSM envelope encryption and evidence signatures](docs/KMS_ENVELOPE_SIGNING.md)
 - [Authenticated tenant routing and authorization](docs/TENANT_AUTHORIZATION.md)
@@ -786,7 +882,7 @@ Key documentation:
 - [Applicability](docs/APPLICABILITY.md)
 - [Chain of custody](docs/CHAIN_OF_CUSTODY.md)
 - [Audit dossier](docs/AUDIT_DOSSIER.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Roadmap to v1.0](docs/ROADMAP.md)
 
 ## Contributing
 
