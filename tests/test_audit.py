@@ -8,6 +8,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from finredops.anchor_http import HttpsAuditAnchorProvider
 from finredops.anchor_models import (
     AuditAnchorCommitment,
     AuditAnchorError,
@@ -231,6 +232,20 @@ class AuditTests(unittest.TestCase):
                 trust_bundle=self._anchor_trust(private_key, status="disabled"),
             )
         )
+
+    def test_external_anchor_http_requires_pinned_https_url(self) -> None:
+        with self.assertRaises(AuditAnchorError):
+            HttpsAuditAnchorProvider(
+                "http://anchor.example.test/v1/append", anchor_id="anchor-primary"
+            )
+        with self.assertRaises(AuditAnchorError):
+            HttpsAuditAnchorProvider(
+                "https://user@anchor.example.test/v1/append", anchor_id="anchor-primary"
+            )
+        provider = HttpsAuditAnchorProvider(
+            "https://anchor.example.test/v1/append", anchor_id="anchor-primary"
+        )
+        self.assertEqual(provider.anchor_id, "anchor-primary")
 
 
 if __name__ == "__main__":
