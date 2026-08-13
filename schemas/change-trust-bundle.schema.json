@@ -15,9 +15,10 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["issuer", "key_id", "public_key", "role", "not_before", "not_after", "status", "algorithm"],
+        "required": ["issuer", "subject", "key_id", "public_key", "role", "not_before", "not_after", "status", "algorithm"],
         "properties": {
           "issuer": {"type": "string", "minLength": 1, "maxLength": 200},
+          "subject": {"type": "string", "minLength": 1, "maxLength": 200},
           "key_id": {"type": "string", "minLength": 1, "maxLength": 200},
           "public_key": {"type": "string", "minLength": 1},
           "role": {"enum": ["configuration_governor", "security_governor"]},
