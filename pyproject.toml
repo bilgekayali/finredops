@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finredops"
-version = "0.8.2"
+version = "0.8.3"
 description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,8 +22,10 @@ keywords = [
   "kms",
   "multi-tenant",
   "penetration-testing",
+  "postgresql",
   "regtech",
   "red-team",
+  "row-level-security",
   "sarif",
   "tenant-authorization",
   "tse-13638",
@@ -48,6 +50,9 @@ dependencies = [
 [project.optional-dependencies]
 aws-kms = [
   "boto3>=1.35,<2",
+]
+postgres = [
+  "psycopg[binary]>=3.2,<4",
 ]
 
 [project.urls]
