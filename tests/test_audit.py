@@ -10,16 +10,20 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from finredops.anchor_models import (
     AuditAnchorCommitment,
+    AuditAnchorError,
     AuditAnchorTrustBundle,
     AuditAnchorTrustKey,
     b64url,
 )
+from finredops.anchor_source import create_verified_audit_anchor_commitment
 from finredops.anchor_verify import verify_audit_anchor_chain, verify_audit_anchor_receipt
 from finredops.audit import AuditChain
 from finredops.models import sha256_digest
 from finredops.reference_anchor import ReferenceAppendOnlyAnchorAuthority
+from finredops.signed_evidence import sign_audit_chain
 
 from tests.helpers import NOW
+from tests.test_kms_envelope import MemoryInstitutionProvider, institution_context
 
 
 class AuditTests(unittest.TestCase):
@@ -112,6 +116,49 @@ class AuditTests(unittest.TestCase):
         valid, errors = AuditChain((first, altered)).verify()
         self.assertFalse(valid)
         self.assertIn("timestamp moves backwards", " ".join(errors))
+
+    def test_anchor_source_requires_current_institution_kms_signature(self) -> None:
+        provider = MemoryInstitutionProvider()
+        context = institution_context("bank-a")
+        chain = AuditChain()
+        chain.append(
+            timestamp=NOW,
+            actor_id="operator",
+            event_type="audit.ready",
+            engagement_id="ENG-SIGNED-1",
+            payload={"synthetic": True},
+        )
+        signature = sign_audit_chain(
+            "ENG-SIGNED-1",
+            chain,
+            institution_context=context,
+            provider=provider,
+            signed_at=NOW + timedelta(seconds=1),
+        )
+        item = create_verified_audit_anchor_commitment(
+            "ENG-SIGNED-1",
+            chain,
+            signature,
+            institution_context=context,
+            provider=provider,
+        )
+        self.assertEqual(item.institution_id, "bank-a")
+        self.assertEqual(item.audit_signature_artifact_digest, signature.digest())
+        chain.append(
+            timestamp=NOW + timedelta(seconds=2),
+            actor_id="operator",
+            event_type="audit.changed",
+            engagement_id="ENG-SIGNED-1",
+            payload={},
+        )
+        with self.assertRaises(AuditAnchorError):
+            create_verified_audit_anchor_commitment(
+                "ENG-SIGNED-1",
+                chain,
+                signature,
+                institution_context=context,
+                provider=provider,
+            )
 
     def test_external_anchor_receipt_verifies_with_independent_trust(self) -> None:
         private_key = Ed25519PrivateKey.generate()
