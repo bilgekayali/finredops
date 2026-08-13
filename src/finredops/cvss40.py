@@ -97,7 +97,9 @@ def validate_cvss40(
         declared = float(declared_score)
         if not math.isfinite(declared) or not 0.0 <= declared <= 10.0:
             raise Cvss40ValidationError("Declared CVSS score is outside 0.0 to 10.0.")
-        if round(declared, 1) != score:
+        if round(declared, 1) != declared:
+            raise Cvss40ValidationError("Declared CVSS score must use one-decimal publication precision.")
+        if declared != score:
             raise Cvss40ValidationError("Declared CVSS score does not match the vector.")
 
     if declared_severity is not None:
