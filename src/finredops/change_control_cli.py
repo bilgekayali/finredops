@@ -181,11 +181,12 @@ def run_change_control_command(argv: list[str]) -> int:
 
         if args.command == "postgres-service-account-change-request":
             contract = _contract(args)
+            contract_digest = contract.as_dict()["contract_digest"]
             change = PostgresServiceAccountChange(
                 service_role=args.service_role,
                 institution_id=args.institution,
                 access_mode=args.access,
-                contract_digest=contract.digest(),
+                contract_digest=contract_digest,
             )
             request = postgres_service_account_change_request(
                 change,
@@ -207,7 +208,7 @@ def run_change_control_command(argv: list[str]) -> int:
             request = postgres_service_account_disable_request(
                 service_role=args.service_role,
                 institution_id=args.institution,
-                contract_digest=contract.digest(),
+                contract_digest=contract.as_dict()["contract_digest"],
                 prior_mapping_digest=args.prior_mapping_digest,
                 requested_by=args.requested_by,
                 reason=args.reason,
