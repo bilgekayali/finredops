@@ -2,17 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "institution_id", "engagement_id", "evidence_id", "evaluated_at", "retention_until", "active_hold_ids", "eligible", "reasons", "eligibility_digest"],
+  "required": ["schema_version", "institution_id", "engagement_id", "evidence_id", "evaluated_at", "retention_until", "active_hold_ids", "record_digest", "custody_head_hash", "state_digest", "eligible", "reasons", "eligibility_digest"],
   "properties": {
-    "schema_version": {"type": "string", "minLength": 1, "maxLength": 128},
+    "schema_version": {"const": "finredops.evidence-vault-deletion-eligibility.v1"},
     "institution_id": {"type": "string", "minLength": 1, "maxLength": 128},
     "engagement_id": {"type": "string", "minLength": 1, "maxLength": 128},
     "evidence_id": {"type": "string", "minLength": 1, "maxLength": 128},
     "evaluated_at": {"type": "string", "format": "date-time"},
     "retention_until": {"type": "string", "format": "date"},
-    "active_hold_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "active_hold_ids": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 128}, "uniqueItems": true},
+    "record_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "custody_head_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "state_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "eligible": {"type": "boolean"},
-    "reasons": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "reasons": {"type": "array", "items": {"enum": ["retention_active", "legal_hold_active"]}, "uniqueItems": true},
     "eligibility_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
   }
 }
