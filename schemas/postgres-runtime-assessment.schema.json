@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bilgekayali/finredops/schemas/postgres-runtime-assessment.schema.json",
+  "title": "FinRedOps PostgreSQL Runtime Assessment v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_user",
+    "current_user",
+    "institution_id",
+    "access_mode",
+    "reader_member",
+    "writer_member",
+    "owner_member",
+    "rls_tables",
+    "policy_count",
+    "verified_at",
+    "contract_digest",
+    "database_rls_verified",
+    "service_account_isolation_verified",
+    "rls_bypass_role_verified_absent",
+    "privileged_set_role_path_verified_absent",
+    "assessment_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.postgres-runtime-assessment.v1"},
+    "session_user": {"type": "string", "minLength": 1, "maxLength": 63},
+    "current_user": {"type": "string", "minLength": 1, "maxLength": 63},
+    "institution_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/+~-]{0,199}$"},
+    "access_mode": {"enum": ["read", "write"]},
+    "reader_member": {"type": "boolean"},
+    "writer_member": {"type": "boolean"},
+    "owner_member": {"const": false},
+    "rls_tables": {
+      "type": "array",
+      "items": {"enum": ["engagement_snapshots", "audit_events", "idempotency_records"]},
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "policy_count": {"type": "integer", "minimum": 6},
+    "verified_at": {"type": "string", "format": "date-time"},
+    "contract_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "database_rls_verified": {"const": true},
+    "service_account_isolation_verified": {"const": true},
+    "rls_bypass_role_verified_absent": {"const": true},
+    "privileged_set_role_path_verified_absent": {"const": true},
+    "assessment_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

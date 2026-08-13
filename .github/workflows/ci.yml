@@ -41,6 +41,8 @@ jobs:
           python -m finredops --help | grep -q "authorize-tenant-route"
           python -m finredops --help | grep -q "verify-tenant-authorization"
           python -m finredops --help | grep -q "authorized-tenant-store-metadata"
+          python -m finredops --help | grep -q "postgres-rls-install-sql"
+          python -m finredops --help | grep -q "verify-postgres-runtime"
           python -m finredops validate-engagement examples/synthetic_engagement.json
           python -m finredops validate-plan examples/synthetic_ai_plan.json --engagement examples/synthetic_engagement.json
           python -c "import json, pathlib; [json.loads(path.read_text()) for path in pathlib.Path('schemas').glob('*.json')]"
@@ -161,6 +163,19 @@ jobs:
               raise SystemExit(f"tenant authorization imports forbidden capability: {unexpected}")
           PY
 
+      - name: Enforce PostgreSQL tenant source boundary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path("src/finredops/postgres_rls.py").read_text(encoding="utf-8").lower()
+          if "session_user" not in source:
+              raise SystemExit("PostgreSQL RLS boundary must derive tenant identity from session_user")
+          for forbidden in ("set_config(", "current_setting("):
+              if forbidden in source:
+                  raise SystemExit(f"PostgreSQL RLS boundary must not trust client-selected tenant GUCs: {forbidden}")
+          PY
+
       - name: Upload verified demo artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -174,6 +189,39 @@ jobs:
             demo-output/reviewed/regulatory-report.md
             demo-output/reviewed/promotion-manifest.json
             demo-output/reviewed/reviews/*.json
+
+  postgres-rls-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: finredops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d finredops"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      FINREDOPS_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@127.0.0.1:5432/finredops
+      FINREDOPS_TEST_POSTGRES_RUNTIME_BASE: host=127.0.0.1 port=5432 dbname=finredops
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PostgreSQL optional dependency
+        run: python -m pip install -e ".[postgres]"
+
+      - name: Run live PostgreSQL RLS integration tests
+        run: python -m unittest tests.test_postgres_rls -v
 
   package-smoke:
     runs-on: ubuntu-latest
@@ -202,6 +250,8 @@ jobs:
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-oidc-workflow-bindings"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "authorize-tenant-route"
           /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-tenant-authorization"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "postgres-rls-install-sql"
+          /tmp/finredops-wheel/bin/finredops --help | grep -q "verify-postgres-runtime"
 
       - name: Verify packaged examples and bundled demo
         run: |
