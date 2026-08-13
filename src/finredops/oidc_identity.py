@@ -67,7 +67,7 @@ def _https_issuer(value: Any) -> str:
     parsed = urlparse(issuer)
     if parsed.scheme != "https" or not parsed.netloc or parsed.fragment or parsed.query:
         raise OIDCIdentityError("OIDC issuer must be an exact HTTPS origin/path without query or fragment.")
-    return issuer.rstrip("/")
+    return issuer
 
 
 def _int(value: Any, name: str, *, minimum: int, maximum: int) -> int:
