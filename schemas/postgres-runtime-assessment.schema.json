@@ -20,6 +20,7 @@
     "database_rls_verified",
     "service_account_isolation_verified",
     "rls_bypass_role_verified_absent",
+    "privileged_set_role_path_verified_absent",
     "assessment_digest"
   ],
   "properties": {
@@ -44,6 +45,7 @@
     "database_rls_verified": {"const": true},
     "service_account_isolation_verified": {"const": true},
     "rls_bypass_role_verified_absent": {"const": true},
+    "privileged_set_role_path_verified_absent": {"const": true},
     "assessment_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
   }
 }
