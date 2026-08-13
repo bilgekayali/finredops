@@ -152,7 +152,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] metadata explicitly distinguishes tenant-scope enforcement from encryption-at-rest verification;
 - [x] institution-owned envelope encryption through a reviewed KMS/HSM provider interface;
 - [x] KMS/HSM-backed audit-chain and receipt signatures;
-- [ ] authenticated tenant routing and authorization boundary above the local store;
+- [x] authenticated tenant routing and authorization boundary above the local store;
 - [ ] database-engine row-level security for a production persistence backend;
 
 ## v0.8.1 — KMS/HSM envelope encryption and signed evidence
@@ -173,6 +173,23 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [ ] built-in Azure Key Vault, Google Cloud KMS and PKCS#11 adapters;
 - [ ] externally anchored/timestamped audit heads;
 
+## v0.8.2 — authenticated tenant routing and authorization
+
+- [x] digest-bound institution routing policy with exact OIDC provider and subject grants;
+- [x] closed tenant capability catalog for `store_read`, `store_write`, `audit_verify`, and `crypto_use`;
+- [x] role authorization is the exact intersection of verified OIDC roles and institution-granted roles;
+- [x] tenant authorization binds source OIDC verification, current routing policy, and current institution context digests;
+- [x] cross-institution, cross-provider, cross-subject, stale-policy, stale-context, and capability-escalation replay fail closed;
+- [x] authorization expires no later than the verified source ID token;
+- [x] source policy/OIDC/context are required again when a stored authorization is used;
+- [x] authorized store session derives the institution namespace from verified context instead of request input;
+- [x] authenticated store writes require an institution crypto provider so v0.8.1 encryption cannot be bypassed silently;
+- [x] CLI policy-template, authorize, verify, and authorized metadata-read workflows;
+- [x] strict tenant-routing-policy and tenant-authorization JSON schemas;
+- [x] CI boundary prevents token parsing/network capabilities from entering the tenant authorization module;
+- [ ] database-native row-level security and service-account isolation for a production persistence backend;
+- [ ] signed routing-policy bundles with independent configuration-change approval;
+
 ## Platform hardening
 
 - [x] signed identities using an authenticated external identity-provider protocol;
@@ -180,10 +197,11 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] institution-owned encryption/signing key-reference contract with no secret material;
 - [x] institution-owned envelope encryption through KMS/HSM;
 - [x] key-backed audit and receipt signatures;
+- [x] authenticated application-layer tenant routing and capability authorization;
 - [ ] immutable external audit anchoring;
 - [ ] evidence-vault integration, retention, legal hold and deletion policy;
 - [ ] policy bundle signatures and independent change approval;
-- [ ] authenticated tenant-routing/database-RLS production boundary;
+- [ ] database-engine RLS/service-account production boundary;
 - [ ] independent legal, accessibility and security review.
 
 ## Later — separately reviewed advanced modules
