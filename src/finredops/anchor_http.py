@@ -41,14 +41,19 @@ class HttpsAuditAnchorProvider:
             or parsed.query
             or parsed.fragment
         ):
-            raise AuditAnchorError("External anchor endpoint must be an exact HTTPS URL without userinfo, query, or fragment.")
+            raise AuditAnchorError(
+                "External anchor endpoint must be an exact HTTPS URL without userinfo, query, or fragment."
+            )
         if timeout_seconds <= 0 or timeout_seconds > 60:
             raise AuditAnchorError("Anchor HTTP timeout must be within (0, 60] seconds.")
         self.endpoint = endpoint
         self.anchor_id = anchor_id
         self.timeout_seconds = timeout_seconds
         self._ssl_context = ssl_context or ssl.create_default_context()
-        self._opener = opener or urllib.request.build_opener(_NoRedirect())
+        self._opener = opener or urllib.request.build_opener(
+            _NoRedirect(),
+            urllib.request.HTTPSHandler(context=self._ssl_context),
+        )
 
     def append(self, commitment: AuditAnchorCommitment) -> AuditAnchorReceipt:
         body = canonical_json(commitment.as_dict()).encode("utf-8")
@@ -59,18 +64,14 @@ class HttpsAuditAnchorProvider:
             method="POST",
         )
         try:
-            response = self._opener.open(
-                request,
-                timeout=self.timeout_seconds,
-                context=self._ssl_context,
-            )
+            response = self._opener.open(request, timeout=self.timeout_seconds)
             with response:
                 if getattr(response, "status", 0) not in {200, 201}:
                     raise AuditAnchorError("External anchor service returned an unexpected status.")
                 raw = response.read(_MAX_RESPONSE_BYTES + 1)
         except AuditAnchorError:
             raise
-        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError, TimeoutError) as exc:
             raise AuditAnchorError("External anchor service request failed.") from exc
         if len(raw) > _MAX_RESPONSE_BYTES:
             raise AuditAnchorError("External anchor service response exceeds the size limit.")
