@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/oidc-identity-binding.schema.json",
+  "title": "FinRedOps OIDC Identity Binding v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "binding_id", "verification_id", "verification_digest", "protected_schema", "protected_id", "protected_digest", "subject", "role", "engagement_id", "bound_at", "external_idp_protocol_verified", "binding_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.oidc-identity-binding.v1"},
+    "binding_id": {"type": "string", "pattern": "^FRX-OIDB-[A-F0-9]{24}$"},
+    "verification_id": {"type": "string", "pattern": "^FRX-OIDC-[A-F0-9]{24}$"},
+    "verification_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "protected_schema": {"enum": ["finredops.identity-assertion.v1", "finredops.approval-signature.v1"]},
+    "protected_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "protected_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "subject": {"type": "string", "minLength": 1, "maxLength": 200},
+    "role": {"enum": ["qualified_tester", "review_governor", "business_risk_owner", "report_approver"]},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "bound_at": {"type": "string", "format": "date-time"},
+    "external_idp_protocol_verified": {"const": true},
+    "binding_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
