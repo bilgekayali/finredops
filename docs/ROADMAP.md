@@ -141,7 +141,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 
 ## v0.8 — tenant and institution key boundaries
 
-- [x] SQLite schema v2 scopes snapshots by `(institution_id, engagement_id, revision)`;
+- [x] SQLite persistence scopes snapshots by `(institution_id, engagement_id, revision)`;
 - [x] audit events are institution-scoped and reject engagement-label mismatch;
 - [x] idempotency keys are institution-scoped so identical keys may be used independently by different tenants;
 - [x] store handles bind one institution id and do not accept per-operation tenant overrides;
@@ -150,21 +150,40 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] private key material is rejected from institution key-reference configuration;
 - [x] CLI exposes institution context validation and tenant-scoped audit verification;
 - [x] metadata explicitly distinguishes tenant-scope enforcement from encryption-at-rest verification;
-- [ ] institution-owned envelope encryption through a reviewed KMS/HSM provider interface;
-- [ ] HSM/KMS-backed audit-chain and receipt signatures;
+- [x] institution-owned envelope encryption through a reviewed KMS/HSM provider interface;
+- [x] KMS/HSM-backed audit-chain and receipt signatures;
 - [ ] authenticated tenant routing and authorization boundary above the local store;
 - [ ] database-engine row-level security for a production persistence backend;
+
+## v0.8.1 — KMS/HSM envelope encryption and signed evidence
+
+- [x] fresh 256-bit DEK per protected snapshot/audit record;
+- [x] AES-256-GCM application-layer encryption with fresh 96-bit nonces;
+- [x] AAD binds institution, object identity, key id, provider and key-reference digest;
+- [x] provider-neutral `KmsHsmProvider` wrap/unwrap/sign/verify interface;
+- [x] concrete AWS KMS adapter using `Encrypt` / `Decrypt` and authenticated encryption context;
+- [x] AWS KMS `Sign` / `Verify` on precomputed SHA-256 digests with explicit algorithm allow-list;
+- [x] explicit plaintext-to-envelope rewrite for legacy SQLite rows;
+- [x] store metadata reports encrypted versus legacy plaintext rows and verified protection state;
+- [x] key rotation supports historical `retiring` key references while new writes use the active key;
+- [x] disabled historical keys fail closed;
+- [x] KMS/HSM-backed audit-chain signatures bind head hash, event count and complete audit digest;
+- [x] KMS/HSM-backed execution-receipt signatures bind proposal/evidence/lifecycle digests;
+- [x] strict envelope and key-backed-signature JSON schemas plus Python 3.11/3.12/3.13 regression coverage;
+- [ ] built-in Azure Key Vault, Google Cloud KMS and PKCS#11 adapters;
+- [ ] externally anchored/timestamped audit heads;
 
 ## Platform hardening
 
 - [x] signed identities using an authenticated external identity-provider protocol;
 - [x] institution-scoped persistence namespace and cross-tenant collision isolation baseline;
 - [x] institution-owned encryption/signing key-reference contract with no secret material;
-- [ ] institution-owned envelope encryption through KMS/HSM;
-- [ ] key-backed audit and receipt signatures;
+- [x] institution-owned envelope encryption through KMS/HSM;
+- [x] key-backed audit and receipt signatures;
 - [ ] immutable external audit anchoring;
 - [ ] evidence-vault integration, retention, legal hold and deletion policy;
 - [ ] policy bundle signatures and independent change approval;
+- [ ] authenticated tenant-routing/database-RLS production boundary;
 - [ ] independent legal, accessibility and security review.
 
 ## Later — separately reviewed advanced modules
