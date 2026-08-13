@@ -98,7 +98,7 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] current-authoritative-review resolution for trusted report promotion;
 - [x] signature-verification evidence exposed through CLI, trust resolution and trusted-promotion outputs;
 - [ ] OIDC/JWKS adapter for authenticated external identity-provider sessions and claims;
-- [ ] key-backed report approval and risk-acceptance signatures;
+- [x] key-backed report approval and risk-acceptance signatures;
 
 ## v0.7.0 — signed review trust and lifecycle
 
@@ -111,7 +111,19 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] versioned trust-bundle, identity-assertion, lifecycle-event and trust-resolution JSON contracts;
 - [x] Python 3.11/3.12/3.13 regression coverage plus installed-wheel verification;
 - [ ] upstream OIDC/JWKS/SAML authentication protocol verification;
-- [ ] signed business risk acceptance and final report approvals;
+
+## v0.7.1 — key-backed business and report approvals
+
+- [x] dedicated approval trust bundle separated from reviewer trust roots;
+- [x] `business_risk_owner` and `report_approver` key roles with Ed25519 verification only;
+- [x] risk-acceptance signatures bound to acceptance digest and trusted-review-resolution digest;
+- [x] trusted promotion rejects unsigned, extra, replayed or non-authoritative risk acceptance;
+- [x] signed risk-acceptance resolution digest carried into trusted-promotion evidence;
+- [x] exactly two distinct signed report approvers required for `approved` status;
+- [x] report-approval signatures bound to source draft digest and trusted-promotion digest;
+- [x] approved report remains `report_issued: false`; delivery/submission stays outside automation;
+- [x] versioned approval trust, signature, risk-resolution and report-approval JSON contracts;
+- [ ] upstream OIDC/JWKS identity-provider authentication and claim binding;
 
 ## Platform hardening
 

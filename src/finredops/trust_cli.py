@@ -12,13 +12,13 @@ from .models import parse_datetime, sha256_digest
 from .promotion import build_reviewed_report
 from .reporting import render_report_markdown, validate_report
 from .review import read_review_json, review_from_document
+from .signed_approvals import load_verified_risk_acceptances
 from .trust import (
     ReviewTrustError,
     identity_assertion_from_document,
     identity_assertion_signing_document,
     lifecycle_event_from_document,
     lifecycle_event_from_draft,
-    load_acceptances_for_authoritative_reviews,
     load_trusted_review_resolution,
 )
 
@@ -40,7 +40,7 @@ def trust_help() -> str:
         "  identity-assertion-request      create exact bytes/fields for external signing\n"
         "  finalize-identity-assertion     attach an externally produced signature\n"
         "  verify-review-trust             verify identity signatures and resolve authority\n"
-        "  promote-trusted-reviewed-report promote only current trusted reviews to draft\n"
+        "  promote-trusted-reviewed-report promote current trusted reviews; signed risk acceptance required\n"
     )
 
 
@@ -85,6 +85,8 @@ def _parser(command: str) -> argparse.ArgumentParser:
         parser.add_argument("--as-of", required=True)
         if command == "promote-trusted-reviewed-report":
             parser.add_argument("--acceptance", type=Path, action="append", default=[])
+            parser.add_argument("--acceptance-signature", type=Path, action="append", default=[])
+            parser.add_argument("--approval-trust-bundle", type=Path)
             parser.add_argument("--spec", type=Path, required=True)
             parser.add_argument("--output-dir", type=Path, required=True)
         return parser
@@ -170,6 +172,7 @@ def _refuse_outputs(output_dir: Path) -> None:
         "promotion-manifest.json",
         "trust-resolution.json",
         "trusted-promotion-manifest.json",
+        "signed-risk-acceptance-resolution.json",
     )
     if output_dir.exists() and not output_dir.is_dir():
         raise ReviewTrustError("output-dir must be a directory path.")
@@ -197,9 +200,28 @@ def _promote(args: argparse.Namespace) -> dict[str, Any]:
         raise ReviewTrustError(
             "Trusted promotion is blocked while a finding has a revoked review without replacement."
         )
-    acceptances = load_acceptances_for_authoritative_reviews(
-        batch, resolution.authoritative_reviews, tuple(args.acceptance)
-    )
+    trust_document = resolution.as_dict()
+    acceptance_paths = tuple(args.acceptance)
+    acceptance_signature_paths = tuple(args.acceptance_signature)
+    signed_acceptance_resolution = None
+    if acceptance_paths or acceptance_signature_paths:
+        if args.approval_trust_bundle is None:
+            raise ReviewTrustError(
+                "Trusted risk acceptance requires --approval-trust-bundle and signed acceptance records."
+            )
+        acceptances, signed_acceptance_resolution = load_verified_risk_acceptances(
+            batch=batch,
+            reviews=resolution.authoritative_reviews,
+            acceptance_paths=acceptance_paths,
+            signature_paths=acceptance_signature_paths,
+            approval_trust_bundle_path=args.approval_trust_bundle,
+            engagement_id=args.engagement_id,
+            review_trust_resolution_digest=trust_document["resolution_digest"],
+            as_of=parse_datetime(args.as_of),
+        )
+    else:
+        acceptances = ()
+
     spec = read_review_json(args.spec)
     report, base_manifest = build_reviewed_report(
         batch,
@@ -211,8 +233,7 @@ def _promote(args: argparse.Namespace) -> dict[str, Any]:
     validation = validate_report(report)
     if not validation.valid:
         raise ReviewTrustError("Trusted promotion produced an invalid draft report.")
-    trust_document = resolution.as_dict()
-    trusted_body = {
+    trusted_body: dict[str, Any] = {
         "schema_version": "finredops.trusted-report-promotion.v1",
         "base_promotion_digest": base_manifest["promotion_digest"],
         "report_id": report.report_id,
@@ -225,6 +246,15 @@ def _promote(args: argparse.Namespace) -> dict[str, Any]:
         "report_issued": False,
         "human_approval_required": True,
     }
+    if signed_acceptance_resolution is not None:
+        signed_document = signed_acceptance_resolution.as_dict()
+        trusted_body.update(
+            {
+                "signed_risk_acceptance_resolution_digest": signed_document["resolution_digest"],
+                "signed_risk_acceptance_signature_count": len(signed_acceptance_resolution.signature_ids),
+                "approval_trust_bundle_digest": signed_acceptance_resolution.approval_trust_bundle_digest,
+            }
+        )
     trusted_manifest = {**trusted_body, "trusted_promotion_digest": sha256_digest(trusted_body)}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "regulatory-report.json").write_text(
@@ -242,6 +272,11 @@ def _promote(args: argparse.Namespace) -> dict[str, Any]:
     (args.output_dir / "trusted-promotion-manifest.json").write_text(
         json.dumps(trusted_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    if signed_acceptance_resolution is not None:
+        (args.output_dir / "signed-risk-acceptance-resolution.json").write_text(
+            json.dumps(signed_acceptance_resolution.as_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
     return {
         "report_id": report.report_id,
         "report_digest": report.digest(),
@@ -249,6 +284,7 @@ def _promote(args: argparse.Namespace) -> dict[str, Any]:
         "ready_for_issue": validation.ready_for_issue,
         "authoritative_review_count": len(resolution.authoritative_reviews),
         "verified_assertion_count": len(resolution.verified_assertion_ids),
+        "signed_risk_acceptance_count": len(acceptances),
         "trusted_promotion_digest": trusted_manifest["trusted_promotion_digest"],
         "output_dir": str(args.output_dir),
     }

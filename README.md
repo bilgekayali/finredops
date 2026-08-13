@@ -13,14 +13,14 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.7.0** keeps simulation as the safe default and preserves the
-> bounded active-validation and draft-report boundaries. It adds a verification-only
-> reviewer trust layer: externally signed Ed25519 identity assertions are bound
-> to engagement, intake, finding and immutable review/lifecycle digests; signed
-> supersession and revocation preserve history while deterministic resolution
-> selects the current authoritative review. FinRedOps does not store reviewer
-> private keys, and OIDC/JWKS authentication remains a separate roadmap item.
-> Report issuance and final human approval remain outside automation.
+> **Version 0.7.1** keeps simulation as the safe default and preserves the
+> bounded active-validation and draft-report boundaries. It extends the v0.7
+> verification-only trust model to business risk acceptance and report approval:
+> dedicated approval trust roots verify short-lived Ed25519 signatures bound to
+> the exact acceptance/report digest and trusted workflow context. Exactly two
+> distinct signed report approvers are required before a trusted draft can become
+> `approved`. FinRedOps still does not store private keys, validate upstream
+> OIDC/JWKS sessions, issue reports automatically, or submit anything to a regulator.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -57,7 +57,10 @@ flowchart TD
     J --> K["Qualified human review"]
     K --> L["Signed reviewer identity assertion"]
     L --> N["Authoritative review resolution"]
-    N --> M["Explicit draft-report promotion"]
+    N --> R["Signed risk acceptance when used"]
+    R --> M["Trusted draft-report promotion"]
+    M --> P["Two signed report approvers"]
+    P --> Q["Approved, not automatically issued"]
 ```
 
 ## Regulatory & security assurance coverage
@@ -93,11 +96,12 @@ security evidence
     -> qualified human disposition
     -> signed identity + engagement binding
     -> authoritative review lifecycle resolution
+    -> signed business risk acceptance when applicable
     -> technical + business impact
     -> regulatory / standard / requirement references
     -> human-confirmed applicability
-    -> draft assurance conclusion
-    -> independent human approval
+    -> trusted draft assurance conclusion
+    -> two signed human report approvals
 ```
 
 This does **not** mean FinRedOps certifies compliance with BDDK, SPK, KVKK,
@@ -111,7 +115,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.7 behavior |
+| Boundary | v0.7.1 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -125,10 +129,12 @@ sources.
 | Reviewer identity | External Ed25519 assertion verification; subject/role bound to engagement, intake, finding and immutable review digest |
 | Review lifecycle | Signed `review_governor` supersession/revocation; history is preserved and parallel/orphan/cyclic chains fail closed |
 | Authoritative review | Trusted promotion receives only the current cryptographically verified review for each finding |
-| Risk acceptance | Separate business risk owner with compensating controls and expiry; key-backed signature is still roadmap work |
+| Risk acceptance | Separate `business_risk_owner`; acceptance signature is bound to acceptance digest + trusted-review-resolution digest |
+| Approval trust roots | Dedicated public-key bundle; reviewer keys cannot authorize business risk or report approval |
+| Report approval | Exactly two distinct `report_approver` signatures bound to source draft digest + trusted-promotion digest |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, report-spec templates, trust verification, promotion and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, promotion and synthetic demonstration |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only hash chain and offline-verifiable artifacts |
@@ -193,8 +199,9 @@ finredops promote-reviewed-report \
   --output-dir work/reviewed-report
 ```
 
-Optional finalized business risk acceptances may be supplied with repeated
-`--acceptance` arguments.
+The legacy reviewed-report promotion path remains available for compatibility.
+For signed reviewer and risk-acceptance enforcement use the trusted promotion
+path described below.
 
 The command produces:
 
@@ -267,17 +274,61 @@ finredops verify-review-trust \
 
 `promote-trusted-reviewed-report` performs the same trust resolution before
 calling the existing draft-report promotion boundary. Only current authoritative
-signed reviews are passed forward. The output additionally includes
-`trust-resolution.json` and `trusted-promotion-manifest.json`; the report remains
-`draft` and cannot be issued automatically.
+signed reviews are passed forward. If business risk acceptance is supplied,
+v0.7.1 additionally requires a dedicated approval trust bundle and a valid
+signed acceptance for every acceptance record. The output can include
+`signed-risk-acceptance-resolution.json` in addition to `trust-resolution.json`
+and `trusted-promotion-manifest.json`. The report remains a `draft`.
 
-This release verifies provider-neutral signed identity assertions, but it does
-**not** yet validate OIDC/JWKS, SAML, MFA, device-posture or institutional
-directory session claims. That distinction is explicit in trust-resolution
-artifacts as `external_idp_protocol_verified: false`.
+This release verifies provider-neutral signed assertions, but it does **not** yet
+validate OIDC/JWKS, SAML, MFA, device-posture or institutional-directory session
+claims. That distinction remains explicit in trust-resolution artifacts as
+`external_idp_protocol_verified: false`.
 
 See **[Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)**
-for the trust boundary, signing contract, fail-closed rules and lifecycle model.
+for the reviewer trust boundary and lifecycle model.
+
+## v0.7.1 signed business and report approvals
+
+Approval keys are kept in a **separate** `approval-trust-bundle` with only
+`business_risk_owner` and `report_approver` roles. This prevents reviewer trust
+keys from being reused as business or final-report approval credentials.
+
+A signed risk acceptance is bound to both the immutable `RiskAcceptance` digest
+and the current trusted-review-resolution digest. An accepted-risk finding cannot
+enter the trusted draft report path without that signature.
+
+A trusted draft report is approved only after **exactly two distinct**
+`report_approver` signatures are verified against the source report digest and
+`trusted_promotion_digest`:
+
+```bash
+finredops approve-trusted-report \
+  --report work/trusted-report/regulatory-report.json \
+  --trusted-promotion-manifest work/trusted-report/trusted-promotion-manifest.json \
+  --approval-signature work/report-approval-1.json \
+  --approval-signature work/report-approval-2.json \
+  --approval-trust-bundle trust/approval-trust.json \
+  --engagement-id FRX-ENGAGEMENT-001 \
+  --as-of 2026-08-13T11:00:00Z \
+  --output-dir work/approved-report
+```
+
+Outputs:
+
+```text
+approved-regulatory-report.json
+approved-regulatory-report.md
+signed-report-approval.json
+```
+
+The derived report has `status: approved` and can satisfy the existing
+`ready_for_issue` structural check because its two `human_approvals` are verified
+signature ids. This command **does not issue, transmit, file, or submit the
+report**; `signed-report-approval.json` always records `report_issued: false`.
+
+See **[Signed business and report approvals](docs/SIGNED_APPROVALS.md)** for the
+full signing workflow and trust boundaries.
 
 ## Reproduce the reviewed-report demo from an installed wheel
 
@@ -317,7 +368,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.7.0-py3-none-any.whl \
+gh attestation verify finredops-0.7.1-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -349,37 +400,40 @@ dossier.
 
 ```text
 src/finredops/
-  planner.py           strict AI-to-control-plane boundary
-  policy.py            deterministic deny-by-default authorization
-  catalog.py           closed catalog of typed actions
-  runner.py            network-free synthetic evidence runner
-  validation.py        optional bounded active validation
-  intake.py            bounded SARIF parser and canonical candidates
-  review.py            qualified disposition and role-separated risk acceptance
-  trust.py             Ed25519 identity verification and authoritative review lifecycle
-  trust_cli.py         v0.7 trust/lifecycle operator commands
-  promotion.py         explicit reviewed-finding to draft-report boundary
-  operator_cli.py      reviewed-report and release-integrity commands
-  entrypoint.py        top-level legacy/operator/trust command router
-  release_integrity.py packaged examples and strict local checksum verification
-  examples/            installed-wheel synthetic engagement, plan, and SARIF
-  evidence.py          sensitive-data minimization boundary
-  custody.py           metadata-only evidence registry and custody hash chain
-  audit.py             append-only SHA-256 audit chain
-  store.py             transactional SQLite revisions and audit persistence
-  service.py           engagement and approval state machine
-  profiles.py          financial-institution preflight policy
-  regulations.py       versioned Turkish regulatory control registry
-  applicability.py     human-confirmed regulatory/standards scope
-  reporting.py         audit-support validation, crosswalk, and renderer
-  diffing.py           report revision and remediation delta
-  bundle.py            deterministic audit dossier builder and verifier
-  api.py               loopback-first read-only API
-  dashboard.py         self-contained operations interface
-schemas/               versioned data contracts, including reviewer trust/lifecycle
-docs/                  architecture, safety, assurance, operator, release and trust workflow
-examples/              source-tree synthetic reserved-namespace inputs
-tests/                 policy, integrity, trust, boundary, packaging, and end-to-end tests
+  planner.py              strict AI-to-control-plane boundary
+  policy.py               deterministic deny-by-default authorization
+  catalog.py              closed catalog of typed actions
+  runner.py               network-free synthetic evidence runner
+  validation.py           optional bounded active validation
+  intake.py               bounded SARIF parser and canonical candidates
+  review.py               qualified disposition and role-separated risk acceptance
+  trust.py                reviewer identity verification and authoritative review lifecycle
+  trust_cli.py            v0.7 trust/lifecycle and trusted-promotion commands
+  approval_keys.py        separate business/report public-key trust roots
+  signed_approvals.py     signed risk-acceptance and report-approval verification
+  signed_approval_cli.py  v0.7.1 signed approval operator commands
+  promotion.py            explicit reviewed-finding to draft-report boundary
+  operator_cli.py         reviewed-report and release-integrity commands
+  entrypoint.py           top-level legacy/operator/trust/approval command router
+  release_integrity.py    packaged examples and strict local checksum verification
+  examples/               installed-wheel synthetic engagement, plan, and SARIF
+  evidence.py             sensitive-data minimization boundary
+  custody.py              metadata-only evidence registry and custody hash chain
+  audit.py                append-only SHA-256 audit chain
+  store.py                transactional SQLite revisions and audit persistence
+  service.py              engagement and approval state machine
+  profiles.py             financial-institution preflight policy
+  regulations.py          versioned Turkish regulatory control registry
+  applicability.py        human-confirmed regulatory/standards scope
+  reporting.py            audit-support validation, crosswalk, and renderer
+  diffing.py              report revision and remediation delta
+  bundle.py               deterministic audit dossier builder and verifier
+  api.py                  loopback-first read-only API
+  dashboard.py            self-contained operations interface
+schemas/                  versioned data contracts, including reviewer and approval trust
+ docs/                    architecture, safety, assurance, operator, release and trust workflow
+examples/                 source-tree synthetic reserved-namespace inputs
+tests/                    policy, integrity, trust, approval, packaging, and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -388,18 +442,20 @@ FinRedOps demonstrates technical patterns that can support governed security
 testing. Hash chaining provides **tamper evidence**, not non-repudiation.
 SQLite is durable demonstration storage, not an authenticated multi-tenant
 system of record. Regulatory mappings do not establish legal applicability,
-certification, or compliance. A generated report remains an audit-support draft
-until it has been scoped, tested, evidenced, independently reviewed, and signed
-by authorized humans.
+certification, or compliance.
 
 Release checksum validation establishes local byte integrity relative to the
 supplied manifest; it does not establish build origin. GitHub/Sigstore artifact
 attestations address build provenance only when the consumer verifies them.
-The v0.7 trust layer separately verifies Ed25519 reviewer/lifecycle assertions
-against configured public keys and exact engagement/object bindings. It does not
-yet prove that an upstream OIDC/JWKS, SAML, MFA or institutional-directory
-authentication ceremony occurred, and it does not yet cryptographically sign
-business risk acceptance or final report approvals.
+The v0.7 reviewer trust layer verifies Ed25519 reviewer/lifecycle assertions
+against configured public keys and exact engagement/object bindings. v0.7.1
+separately verifies business-risk-owner and report-approver signatures using
+dedicated approval trust roots and context-bound object digests.
+
+These cryptographic checks still do **not** prove that an upstream OIDC/JWKS,
+SAML, MFA, device-posture or institutional-directory authentication ceremony
+occurred. FinRedOps also does not automatically issue, deliver or submit an
+approved report.
 
 ## Reference baseline
 
@@ -419,12 +475,13 @@ The design and analysis model are informed by, but do not claim conformance with
 - [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
 - [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
 - [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
-- [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif-v2.1.0/os/sarif-v2.1.0-os.html)
+- [OASIS SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)
 
 Key documentation:
 
 - [Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)
 - [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
+- [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)
