@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/review-lifecycle-event.schema.json",
+  "title": "FinRedOps Review Lifecycle Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "event_id", "batch_id", "batch_digest", "finding_id", "action",
+    "prior_review_id", "prior_review_digest", "replacement_review_id",
+    "replacement_review_digest", "actor_id", "event_at", "reason", "event_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.review-lifecycle-event.v1"},
+    "event_id": {"type": "string", "pattern": "^FRX-RLC-[A-F0-9]{24}$"},
+    "batch_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "batch_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "finding_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "action": {"enum": ["supersede", "revoke"]},
+    "prior_review_id": {"type": "string", "pattern": "^FRX-REV-[A-F0-9]{24}$"},
+    "prior_review_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "replacement_review_id": {"type": "string", "maxLength": 80},
+    "replacement_review_digest": {"type": "string", "maxLength": 64},
+    "actor_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "event_at": {"type": "string", "format": "date-time"},
+    "reason": {"type": "string", "minLength": 20, "maxLength": 4000},
+    "event_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"action": {"const": "supersede"}}},
+      "then": {
+        "properties": {
+          "replacement_review_id": {"pattern": "^FRX-REV-[A-F0-9]{24}$"},
+          "replacement_review_digest": {"pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"action": {"const": "revoke"}}},
+      "then": {
+        "properties": {
+          "replacement_review_id": {"const": ""},
+          "replacement_review_digest": {"const": ""}
+        }
+      }
+    }
+  ]
+}
