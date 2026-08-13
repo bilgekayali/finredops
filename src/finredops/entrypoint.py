@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import sys
 
+from .change_control_cli import (
+    CHANGE_CONTROL_COMMANDS,
+    change_control_help,
+    run_change_control_command,
+)
 from .hardening_cli import (
     HARDENING_COMMANDS,
     hardening_help,
@@ -33,6 +38,8 @@ def entrypoint(argv: list[str] | None = None) -> int:
         return run_signed_approval_command(raw)
     if raw and raw[0] in OIDC_COMMANDS:
         return run_oidc_command(raw)
+    if raw and raw[0] in CHANGE_CONTROL_COMMANDS:
+        return run_change_control_command(raw)
     if raw and raw[0] in TENANT_AUTH_COMMANDS:
         return run_tenant_auth_command(raw)
     if raw and raw[0] in POSTGRES_COMMANDS:
@@ -44,6 +51,7 @@ def entrypoint(argv: list[str] | None = None) -> int:
         print(trust_help(), end="")
         print(signed_approval_help(), end="")
         print(oidc_help(), end="")
+        print(change_control_help(), end="")
         print(tenant_auth_help(), end="")
         print(postgres_help(), end="")
         print(hardening_help(), end="")
