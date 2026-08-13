@@ -11,6 +11,7 @@ from finredops.entrypoint import entrypoint
 from finredops.institution import (
     InstitutionContextError,
     InstitutionKeyReference,
+    InstitutionSecurityContext,
     institution_context_from_document,
     institution_context_template,
 )
@@ -40,6 +41,38 @@ class InstitutionContextTests(unittest.TestCase):
         document["context_digest"] = "f" * 64
         with self.assertRaises(InstitutionContextError):
             institution_context_from_document(document)
+
+    def test_non_boolean_institution_owned_is_rejected_without_coercion(self) -> None:
+        document = institution_context_template()
+        document["key_references"][0]["institution_owned"] = "true"
+        with self.assertRaises(InstitutionContextError):
+            institution_context_from_document(document)
+
+    def test_multiple_active_keys_for_same_purpose_are_rejected(self) -> None:
+        data_a = InstitutionKeyReference(
+            key_id="data-a",
+            purpose="data_encryption",
+            provider="other",
+            key_ref="kms-ref-a",
+        )
+        data_b = InstitutionKeyReference(
+            key_id="data-b",
+            purpose="data_encryption",
+            provider="other",
+            key_ref="kms-ref-b",
+        )
+        audit = InstitutionKeyReference(
+            key_id="audit",
+            purpose="audit_signing",
+            provider="other",
+            key_ref="hsm-ref",
+        )
+        with self.assertRaises(InstitutionContextError):
+            InstitutionSecurityContext(
+                institution_id="bank-a",
+                institution_name="Bank A",
+                key_references=(data_a, data_b, audit),
+            )
 
     def test_validation_cli_reports_non_claims(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
