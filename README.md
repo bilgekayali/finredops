@@ -38,7 +38,7 @@ The repository contains a readable synthetic output of the governed
 The example contains no live-target data and remains a `draft`,
 human-approval-required audit-support artifact.
 
-## Why this project exists
+## Summary
 
 In regulated environments, “the AI decided to run it” is not an acceptable
 authorization model. A defensible workflow requires explicit rules of
