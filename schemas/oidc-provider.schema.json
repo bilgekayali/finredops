@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/oidc-provider.schema.json",
+  "title": "FinRedOps OIDC Provider Configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "provider_id", "issuer", "client_id", "allowed_algorithms", "role_claim", "required_acr", "max_auth_age_seconds", "max_token_lifetime_seconds", "clock_skew_seconds"],
+  "properties": {
+    "schema_version": {"const": "finredops.oidc-provider.v1"},
+    "provider_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "issuer": {"type": "string", "pattern": "^https://"},
+    "client_id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "allowed_algorithms": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512", "EdDSA"]}
+    },
+    "role_claim": {"type": "string", "minLength": 1, "maxLength": 256},
+    "required_acr": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+    "max_auth_age_seconds": {"type": "integer", "minimum": 60, "maximum": 86400},
+    "max_token_lifetime_seconds": {"type": "integer", "minimum": 60, "maximum": 86400},
+    "clock_skew_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
+    "provider_config_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
