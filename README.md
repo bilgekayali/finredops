@@ -13,16 +13,14 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.9.0** keeps simulation as the safe default and preserves the
+> **Version 0.9.1** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision, tenant, database-RLS,
-> configuration-change, external-audit-anchor and report-issuance boundaries.
-> It adds an institution-scoped encrypted evidence-vault lifecycle on top of the
-> existing KMS/HSM envelope boundary: raw evidence can be stored only as an
-> institution/object-bound encrypted envelope, custody history is append-only,
-> retention moves only forward, legal holds are derived from verified history,
-> and recovery preserves tenant, crypto and custody bindings. Lifecycle approval
-> is deliberately separated from physical storage disposition. The included
-> SQLite vault is a reference implementation, **not** physical WORM storage.
+> configuration-change, external-audit-anchor, encrypted-evidence-vault and
+> report-issuance boundaries. It adds version-pinned assurance evidence for
+> CycloneDX 1.7 supply-chain intake, CVSS 4.0 technical-severity validation and
+> OWASP ASVS 5.0.0 requirement coverage. These artifacts remain inputs to
+> qualified human review: they do not infer regulatory applicability, convert
+> CVSS into financial/business risk, or certify compliance.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -56,8 +54,9 @@ flowchart TD
     F --> H["Hash-chained audit"]
     G --> H
     G --> VV["Institution-scoped encrypted evidence vault"]
-    I["Untrusted SARIF"] --> J["Bounded intake + deduplication"]
+    I["Untrusted SARIF / CycloneDX"] --> J["Bounded intake + normalization"]
     J --> K["Qualified human review"]
+    AS["ASVS 5.0.0 coverage + CVSS 4.0 technical severity"] --> K
     O["OIDC/JWKS verified subject + role"] --> L["Signed reviewer / approval identity"]
     K --> L
     L --> N["Authoritative review resolution"]
@@ -100,7 +99,9 @@ evidence and human-reviewed conclusions.
 | **TSE / TS 13638/T2** | Public penetration-testing prerequisites and licensed-clause evidence boundary |
 | **ISO/IEC 27001:2022 & 27002:2022** | ISMS/control applicability and control-oriented assurance mapping; no certification claim |
 | **NIST SP 800-115** | Technical security-testing and assessment methodology baseline |
-| **OWASP ASVS 5.0** | Application-security verification baseline and finding/control tagging; deeper versioned requirement coverage is on the roadmap |
+| **OWASP ASVS 5.0.0** | Version-pinned requirement catalog/coverage evidence with human-assessed status and no compliance-certification claim |
+| **CycloneDX 1.7** | Bounded SBOM/supply-chain component and vulnerability intake with source digest and human-review boundary |
+| **FIRST CVSS 4.0** | Vector-derived technical severity validation; explicitly separated from financial/business impact |
 | **GDPR — Regulation (EU) 2016/679** | EU privacy/security, minimization and evidence-handling analysis baseline; no clause-level compliance claim |
 | **DORA — Regulation (EU) 2022/2554** | Financial-sector ICT risk, operational-resilience and TLPT analysis baseline |
 | **TIBER-EU** | Intelligence-led testing governance and human-accountability baseline |
@@ -126,17 +127,17 @@ security evidence
 ```
 
 This does **not** mean FinRedOps certifies compliance with BDDK, SPK, KVKK,
-GDPR, DORA, TSE or ISO requirements. It provides structured analysis,
+GDPR, DORA, TSE, ISO or ASVS requirements. It provides structured analysis,
 traceability and audit-support evidence while keeping legal applicability,
 regulatory acceptance, certification and final approval with authorized humans.
 
 See **[Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)**
-for the detailed coverage matrix, implementation status and official reference
-sources.
+and **[v0.9.1 assurance completeness](docs/ASSURANCE_COMPLETENESS.md)** for the
+coverage model, version pins and explicit non-claims.
 
 ## Core control model
 
-| Boundary | v0.9.0 behavior |
+| Boundary | v0.9.1 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -147,6 +148,10 @@ sources.
 | Evidence handling | Deterministic minimization and redaction of likely sensitive identifiers |
 | Evidence vault | Optional institution-scoped raw-evidence boundary with KMS/HSM envelope encryption, append-only custody, forward-only retention, history-derived legal holds and recovery bundles; reference SQLite is not WORM |
 | Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
+| Supply-chain evidence | Bounded CycloneDX 1.7 JSON normalization with source SHA-256, known-component reference integrity, no raw-source embedding and mandatory human review |
+| CVSS evidence | CVSS 4.0 vector validation and qualitative technical severity only; financial/business impact is not inferred |
+| ASVS evidence | Digest-bound OWASP ASVS 5.0.0 versioned requirement refs; human-assessed coverage, no embedded standard text, no compliance certification |
+| Assurance linkage | Qualified-review `validation_evidence_refs` carry CycloneDX/ASVS evidence into draft finding evidence and governed report/audit metadata |
 | Finding disposition | Qualified-tester decision with evidence, final severity, impact, recommendation, and control mapping |
 | Reviewer identity | External Ed25519 assertion verification; subject/role bound to engagement, intake, finding and immutable review digest |
 | External IdP identity | Offline OIDC ID-token + supplied-JWKS verification; pinned issuer/client/alg policy, nonce, ACR, authentication age and role claims |
@@ -172,7 +177,7 @@ sources.
 | Concrete KMS adapter | AWS KMS `Encrypt`/`Decrypt` + `Sign`/`Verify`; AWS credentials/key policy remain outside FinRedOps |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, audit-anchor verification, promotion and synthetic demonstration; evidence-vault lifecycle is exposed as a provider-neutral library boundary |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, audit-anchor verification, promotion and synthetic demonstration; vault and v0.9.1 assurance artifacts remain provider-neutral library boundaries |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only local hash chain, provider-backed signatures, independent external anchor receipts and offline-verifiable artifacts |
@@ -751,6 +756,32 @@ same backend protocol over institution-approved storage. See
 **[Vault lifecycle](docs/VAULT_LIFECYCLE.md)** for retention, legal-hold,
 recovery and non-claim details.
 
+## v0.9.1 assurance completeness
+
+v0.9.1 adds three offline, version-pinned assurance evidence boundaries while
+keeping all conclusions behind the existing qualified-review workflow.
+
+`finredops.supply_chain` accepts a deliberately bounded CycloneDX JSON subset
+with `bomFormat: CycloneDX` and `specVersion: 1.7`, source-digest binding, unique
+component references, affected-component referential integrity and optional
+CVSSv4 ratings. The normalized batch never embeds the raw source and cannot
+promote findings by itself.
+
+`finredops.cvss40` accepts only CVSS 4.0 vectors and validates vector-derived
+technical score/severity plus optional published score/severity assertions. Its
+artifact explicitly records that financial/business impact was **not** inferred.
+
+`finredops.asvs_coverage` keeps OWASP ASVS source material external, pins the
+source digest and version `5.0.0`, and uses versioned requirement refs such as
+`v5.0.0-1.2.5`. Coverage is explicitly human-assessed and non-certifying.
+
+CycloneDX and ASVS evidence references enter governed reporting only when a
+qualified tester places them in `validation_evidence_refs`; the existing report
+promotion path carries those exact refs into draft finding evidence and the
+audit dossier retains the governed report metadata. See
+**[Assurance completeness](docs/ASSURANCE_COMPLETENESS.md)** for supported input
+boundaries, linkage semantics and non-claims.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
 The synthetic engagement, plan, and SARIF input ship as package data. A source
@@ -789,7 +820,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.9.0-py3-none-any.whl \
+gh attestation verify finredops-0.9.1-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -828,6 +859,9 @@ src/finredops/
   runner.py               network-free synthetic evidence runner
   validation.py           optional bounded active validation
   intake.py               bounded SARIF parser and canonical candidates
+  supply_chain.py         bounded CycloneDX 1.7 assurance intake
+  cvss40.py               CVSS 4.0 technical severity validation
+  asvs_coverage.py        ASVS 5.0.0 digest-bound requirement coverage
   review.py               qualified disposition and role-separated risk acceptance
   trust.py                reviewer identity verification and authoritative review lifecycle
   trust_cli.py            v0.7 trust/lifecycle and trusted-promotion commands
@@ -880,9 +914,9 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor and vault contracts
-docs/                     architecture, safety, assurance, operator, release, trust, tenant, database, anchor and vault workflow documentation
-tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant, PostgreSQL, KMS/envelope, anchor, vault, packaging and end-to-end tests
+schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor, vault and assurance contracts
+docs/                     architecture, safety, assurance, operator, release, trust, tenant, database, anchor, vault and workflow documentation
+tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant, PostgreSQL, KMS/envelope, anchor, vault, assurance, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -954,6 +988,12 @@ sanitization. Retention periods and legal holds remain institution/legal-policy
 inputs, and production storage immutability, backup/restore governance, access
 authorization and final disposition procedures remain deployment responsibilities.
 
+v0.9.1 can normalize a bounded CycloneDX 1.7 subset, validate CVSS 4.0 technical
+severity and represent digest-bound ASVS 5.0.0 coverage. It does not make supply-
+chain data trustworthy merely by parsing it, normalize every CycloneDX extension,
+turn CVSS into financial or regulatory risk, certify ASVS compliance, infer
+regulatory applicability, or bypass qualified human review.
+
 ## Reference baseline
 
 The design and analysis model are informed by, but do not claim conformance with:
@@ -969,6 +1009,8 @@ The design and analysis model are informed by, but do not claim conformance with
 - [NIST SP 800-88 Rev.2 — Guidelines for Media Sanitization](https://csrc.nist.gov/pubs/sp/800/88/r2/final)
 - [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project/application-security-verification-standard/)
+- [CycloneDX Specification 1.7](https://cyclonedx.org/docs/1.7/json/)
+- [FIRST Common Vulnerability Scoring System v4.0](https://www.first.org/cvss/v4-0/)
 - [GDPR — Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
 - [DORA — Regulation (EU) 2022/2554](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)
 - [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
@@ -987,6 +1029,7 @@ The design and analysis model are informed by, but do not claim conformance with
 Key documentation:
 
 - [Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)
+- [Assurance completeness](docs/ASSURANCE_COMPLETENESS.md)
 - [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
 - [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
 - [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
