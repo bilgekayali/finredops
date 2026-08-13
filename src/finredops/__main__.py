@@ -1,6 +1,6 @@
 """Allow ``python -m finredops`` execution."""
 
-from .operator_cli import entrypoint
+from .entrypoint import entrypoint
 
 
 raise SystemExit(entrypoint())
