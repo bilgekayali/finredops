@@ -3,7 +3,8 @@
 Tenant selection is derived from the authenticated PostgreSQL ``session_user``
 through an administrator-owned registry. Runtime roles cannot select an institution
 with a client-controlled session variable. FinRedOps data tables use ENABLE + FORCE
-ROW LEVEL SECURITY and runtime accounts must be non-superuser, non-BYPASSRLS roles.
+ROW LEVEL SECURITY and runtime accounts must be non-superuser, non-BYPASSRLS roles
+with no SET ROLE path to a privileged/bypass role.
 
 The optional psycopg dependency is imported only when a live connection is opened.
 """
@@ -83,6 +84,7 @@ class PostgresRLSContract:
             "writer_role": self.writer_role,
             "tenant_source": "session_user_registry",
             "runtime_roles_require_nobypassrls": True,
+            "runtime_roles_require_no_privileged_set_role_path": True,
             "force_row_level_security": True,
             "tables": list(_TABLES),
         }
@@ -195,7 +197,7 @@ CREATE TABLE IF NOT EXISTS {s}."tenant_service_accounts" (
     institution_id TEXT NOT NULL,
     access_mode TEXT NOT NULL CHECK (access_mode IN ('read', 'write')),
     active BOOLEAN NOT NULL DEFAULT TRUE,
-    CHECK (length(institution_id) BETWEEN 1 AND 200)
+    CHECK (institution_id ~ '^[A-Za-z0-9][A-Za-z0-9._:@/+~-]{{0,199}}$')
 );
 ALTER TABLE {s}."tenant_service_accounts" OWNER TO {owner};
 REVOKE ALL ON TABLE {s}."tenant_service_accounts" FROM PUBLIC;
@@ -280,6 +282,7 @@ GRANT EXECUTE ON FUNCTION {s}."current_access_mode"() TO {reader}, {writer};""",
         owner = _qi(self.owner_role)
         grant_role = reader if access_mode == "read" else writer
         role_lit = _ql(service_role)
+        owner_lit = _ql(self.owner_role)
         return f"""BEGIN;
 
 DO $frx$
@@ -293,6 +296,19 @@ BEGIN
           AND (NOT rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
     ) THEN
         RAISE EXCEPTION 'Service role % has unsafe PostgreSQL attributes', {role_lit};
+    END IF;
+    IF EXISTS (
+        SELECT 1
+        FROM pg_roles AS reachable
+        WHERE reachable.rolname <> {role_lit}
+          AND (
+              reachable.rolsuper OR reachable.rolcreatedb OR reachable.rolcreaterole
+              OR reachable.rolreplication OR reachable.rolbypassrls
+              OR reachable.rolname = {owner_lit}
+          )
+          AND pg_has_role({role_lit}, reachable.oid, 'SET')
+    ) THEN
+        RAISE EXCEPTION 'Service role % can SET ROLE to a privileged or RLS-bypass role', {role_lit};
     END IF;
 END
 $frx$;
@@ -354,6 +370,7 @@ class PostgresRuntimeAssessment:
             "database_rls_verified": True,
             "service_account_isolation_verified": True,
             "rls_bypass_role_verified_absent": True,
+            "privileged_set_role_path_verified_absent": True,
         }
         return {**to_primitive(body), "assessment_digest": sha256_digest(body)}
 
@@ -390,6 +407,26 @@ def verify_postgres_connection(
             raise PostgresSecurityError(
                 "Runtime service account must be NOSUPERUSER/NOCREATEDB/NOCREATEROLE/"
                 "NOREPLICATION/NOBYPASSRLS."
+            )
+
+        cursor.execute(
+            """SELECT reachable.rolname
+               FROM pg_roles AS reachable
+               WHERE reachable.rolname <> session_user
+                 AND (
+                     reachable.rolsuper OR reachable.rolcreatedb OR reachable.rolcreaterole
+                     OR reachable.rolreplication OR reachable.rolbypassrls
+                     OR reachable.rolname = %s
+                 )
+                 AND pg_has_role(session_user, reachable.oid, 'SET')
+               ORDER BY reachable.rolname""",
+            (contract.owner_role,),
+        )
+        reachable_unsafe_roles = tuple(str(row[0]) for row in cursor.fetchall())
+        if reachable_unsafe_roles:
+            raise PostgresSecurityError(
+                "Runtime service account can SET ROLE to privileged/RLS-bypass role(s): "
+                + ", ".join(reachable_unsafe_roles)
             )
 
         cursor.execute(
@@ -604,8 +641,6 @@ class PostgresGovernanceStore:
                 provider=self.crypto_provider,
             )
         except (EnvelopeError, json.JSONDecodeError) as exc:
-            if isinstance(exc, PersistenceConflict):
-                raise
             raise PersistenceConflict("Encrypted PostgreSQL content failed authentication.") from exc
 
     def _lock(self, cursor: Any, scope: str) -> None:
