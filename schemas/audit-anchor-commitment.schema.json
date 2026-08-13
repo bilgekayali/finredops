@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinRedOps Audit Anchor Commitment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "institution_id", "engagement_id", "event_count", "head_event_hash", "audit_document_digest", "audit_target_digest", "audit_signature_artifact_digest", "source_artifact_digest", "commitment_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.audit-anchor-commitment.v1"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "event_count": {"type": "integer", "minimum": 0, "maximum": 10000000},
+    "head_event_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "audit_document_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "audit_target_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "audit_signature_artifact_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source_artifact_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "commitment_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
