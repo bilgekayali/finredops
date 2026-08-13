@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/identity-assertion.schema.json",
+  "title": "FinRedOps Signed Reviewer Identity Assertion v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "assertion_id", "issuer", "subject", "key_id", "algorithm",
+    "purpose", "role", "engagement_id", "batch_id", "batch_digest", "finding_id",
+    "object_id", "object_digest", "issued_at", "expires_at", "signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.identity-assertion.v1"},
+    "assertion_id": {"type": "string", "pattern": "^FRX-IDN-[A-F0-9]{24}$"},
+    "issuer": {"type": "string", "minLength": 1, "maxLength": 200},
+    "subject": {"type": "string", "minLength": 1, "maxLength": 200},
+    "key_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "algorithm": {"const": "Ed25519"},
+    "purpose": {"enum": ["finding_review", "review_lifecycle"]},
+    "role": {"enum": ["qualified_tester", "review_governor"]},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "batch_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "batch_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "finding_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "object_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "object_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"}
+  }
+}
