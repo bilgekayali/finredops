@@ -1,6 +1,6 @@
 """Reference append-only anchor authority for separate-service deployments and tests.
 
-This module is service-side.  Production clients should not receive the anchor
+This module is service-side. Production clients should not receive the anchor
 private key; they retain only signed receipts plus the public trust bundle.
 """
 
@@ -81,13 +81,17 @@ class ReferenceAppendOnlyAnchorAuthority:
                 connection.rollback()
                 return receipt_from_document(json.loads(existing["document_json"]))
             last = connection.execute(
-                "SELECT sequence, receipt_digest FROM anchor_receipts ORDER BY sequence DESC LIMIT 1"
+                "SELECT sequence, receipt_digest, document_json FROM anchor_receipts ORDER BY sequence DESC LIMIT 1"
             ).fetchone()
             sequence = 1 if last is None else int(last["sequence"]) + 1
             previous = "0" * 64 if last is None else str(last["receipt_digest"])
             anchored_at = self._clock()
             if anchored_at.tzinfo is None or anchored_at.utcoffset() is None:
                 raise ValueError("Anchor clock must return a timezone-aware timestamp.")
+            if last is not None:
+                last_receipt = receipt_from_document(json.loads(last["document_json"]))
+                if anchored_at < last_receipt.anchored_at:
+                    raise ValueError("Anchor clock cannot move backwards across appended receipts.")
             draft = AuditAnchorReceipt(
                 anchor_id=self.anchor_id,
                 sequence=sequence,
