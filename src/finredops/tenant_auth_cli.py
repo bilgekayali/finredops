@@ -6,6 +6,11 @@ import argparse
 import json
 from pathlib import Path
 
+from .change_control import (
+    ChangeControlError,
+    change_trust_bundle_from_document,
+    verify_tenant_policy_change_package,
+)
 from .institution import institution_context_from_document
 from .models import parse_datetime
 from .oidc_identity import oidc_verification_from_document
@@ -30,6 +35,11 @@ TENANT_AUTH_COMMANDS = frozenset(
 )
 
 
+def _add_change_control_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--change-package", type=Path, required=True)
+    parser.add_argument("--change-trust-bundle", type=Path, required=True)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="finredops")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -44,34 +54,37 @@ def _parser() -> argparse.ArgumentParser:
 
     authorize = subparsers.add_parser(
         "authorize-tenant-route",
-        help="Authorize exact OIDC subject/provider access to one institution and capability set.",
+        help="Authorize exact OIDC subject/provider access using an independently approved routing policy.",
     )
     authorize.add_argument("--policy", type=Path, required=True)
     authorize.add_argument("--institution-context", type=Path, required=True)
     authorize.add_argument("--oidc-verification", type=Path, required=True)
+    _add_change_control_args(authorize)
     authorize.add_argument("--capability", action="append", required=True)
     authorize.add_argument("--as-of", required=True)
     authorize.add_argument("--output", type=Path, required=True)
 
     verify = subparsers.add_parser(
         "verify-tenant-authorization",
-        help="Revalidate a tenant authorization against current policy, context, and OIDC identity.",
+        help="Revalidate tenant authorization, source bindings, and independent policy approval.",
     )
     verify.add_argument("--authorization", type=Path, required=True)
     verify.add_argument("--policy", type=Path, required=True)
     verify.add_argument("--institution-context", type=Path, required=True)
     verify.add_argument("--oidc-verification", type=Path, required=True)
+    _add_change_control_args(verify)
     verify.add_argument("--as-of", required=True)
 
     metadata = subparsers.add_parser(
         "authorized-tenant-store-metadata",
-        help="Read store metadata only after tenant authorization is revalidated.",
+        help="Read store metadata only after tenant authorization and policy change approval are revalidated.",
     )
     metadata.add_argument("database", type=Path)
     metadata.add_argument("--authorization", type=Path, required=True)
     metadata.add_argument("--policy", type=Path, required=True)
     metadata.add_argument("--institution-context", type=Path, required=True)
     metadata.add_argument("--oidc-verification", type=Path, required=True)
+    _add_change_control_args(metadata)
     metadata.add_argument("--as-of", required=True)
     return parser
 
@@ -86,11 +99,21 @@ def _documents(args: argparse.Namespace):
     return context, verification
 
 
-def _authorization_documents(args: argparse.Namespace):
-    context, verification = _documents(args)
+def _approved_policy(args: argparse.Namespace, context):
     policy = tenant_policy_from_document(
         read_json_document(args.policy, maximum_bytes=256_000)
     )
+    bundle = change_trust_bundle_from_document(
+        read_json_document(args.change_trust_bundle, maximum_bytes=256_000)
+    )
+    package = read_json_document(args.change_package, maximum_bytes=512_000)
+    verify_tenant_policy_change_package(policy, context, package, bundle)
+    return policy
+
+
+def _authorization_documents(args: argparse.Namespace):
+    context, verification = _documents(args)
+    policy = _approved_policy(args, context)
     authorization = tenant_authorization_from_document(
         read_json_document(args.authorization, maximum_bytes=128_000)
     )
@@ -116,9 +139,7 @@ def run_tenant_auth_command(argv: list[str]) -> int:
 
         if args.command == "authorize-tenant-route":
             context, verification = _documents(args)
-            policy = tenant_policy_from_document(
-                read_json_document(args.policy, maximum_bytes=256_000)
-            )
+            policy = _approved_policy(args, context)
             authorization = authorize_tenant_route(
                 verification,
                 policy,
@@ -150,6 +171,7 @@ def run_tenant_auth_command(argv: list[str]) -> int:
                         "capabilities": list(authorization.capabilities),
                         "external_idp_protocol_verified": True,
                         "tenant_route_authorized": True,
+                        "independent_policy_change_approval_verified": True,
                     },
                     ensure_ascii=False,
                     indent=2,
@@ -176,6 +198,7 @@ def run_tenant_auth_command(argv: list[str]) -> int:
                         "institution_id": metadata["institution_id"],
                         "tenant_scope_enforced": metadata["tenant_scope_enforced"],
                         "encryption_at_rest_verified": metadata["encryption_at_rest_verified"],
+                        "independent_policy_change_approval_verified": True,
                         "engagements": metadata["engagements"],
                     },
                     ensure_ascii=False,
@@ -184,6 +207,7 @@ def run_tenant_auth_command(argv: list[str]) -> int:
             )
             return 0
     except (
+        ChangeControlError,
         DocumentValidationError,
         TenantAuthorizationError,
         OSError,
@@ -198,7 +222,7 @@ def tenant_auth_help() -> str:
     return (
         "\nAuthenticated tenant-routing commands:\n"
         "  tenant-routing-policy-template    create exact-subject institution routing policy\n"
-        "  authorize-tenant-route            authorize OIDC identity for one tenant/capability set\n"
-        "  verify-tenant-authorization       revalidate tenant authorization and source bindings\n"
-        "  authorized-tenant-store-metadata read tenant store metadata through authorization boundary\n"
+        "  authorize-tenant-route            authorize OIDC identity using independently approved policy\n"
+        "  verify-tenant-authorization       revalidate tenant authorization + policy approval\n"
+        "  authorized-tenant-store-metadata read tenant store metadata through approved authorization boundary\n"
     )
