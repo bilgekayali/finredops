@@ -4,7 +4,6 @@ import io
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -21,6 +20,7 @@ from finredops.tenant_auth import (
     authorize_tenant_route,
     tenant_authorization_from_document,
     tenant_policy_from_document,
+    tenant_policy_template,
     verify_tenant_authorization,
 )
 
@@ -48,10 +48,15 @@ def _context(institution_id: str) -> InstitutionSecurityContext:
     )
 
 
-def _verification(*, subject: str = "user-123", provider_id: str = "bank-idp") -> OIDCIdentityVerification:
+def _verification(
+    *,
+    subject: str = "user-123",
+    provider_id: str = "bank-idp",
+    provider_config_digest: str = "1" * 64,
+) -> OIDCIdentityVerification:
     core = {
         "provider_id": provider_id,
-        "provider_config_digest": "1" * 64,
+        "provider_config_digest": provider_config_digest,
         "jwks_digest": "2" * 64,
         "issuer": "https://idp.example.test",
         "client_id": "finredops-client",
@@ -71,11 +76,16 @@ def _verification(*, subject: str = "user-123", provider_id: str = "bank-idp") -
     return OIDCIdentityVerification(verification_id=verification_id, **core)
 
 
-def _policy(institution_id: str = "bank-a", provider_id: str = "bank-idp") -> TenantRoutingPolicy:
+def _policy(
+    institution_id: str = "bank-a",
+    provider_id: str = "bank-idp",
+    provider_config_digest: str = "1" * 64,
+) -> TenantRoutingPolicy:
     return TenantRoutingPolicy(
         policy_id=f"{institution_id}-routing-v1",
         institution_id=institution_id,
         oidc_provider_id=provider_id,
+        oidc_provider_config_digest=provider_config_digest,
         grants=(
             TenantSubjectGrant(
                 subject="user-123",
@@ -130,10 +140,18 @@ class TenantAuthorizationTests(unittest.TestCase):
                 as_of=NOW + timedelta(minutes=10),
             )
 
-    def test_provider_and_subject_are_exact_not_advisory(self) -> None:
+    def test_provider_subject_and_provider_configuration_are_exact_not_advisory(self) -> None:
         with self.assertRaises(TenantAuthorizationError):
             authorize_tenant_route(
                 _verification(provider_id="other-idp"),
+                _policy(),
+                _context("bank-a"),
+                requested_capabilities=("store_read",),
+                as_of=NOW + timedelta(minutes=5),
+            )
+        with self.assertRaises(TenantAuthorizationError):
+            authorize_tenant_route(
+                _verification(provider_config_digest="9" * 64),
                 _policy(),
                 _context("bank-a"),
                 requested_capabilities=("store_read",),
@@ -148,6 +166,15 @@ class TenantAuthorizationTests(unittest.TestCase):
                 as_of=NOW + timedelta(minutes=5),
             )
 
+    def test_template_pins_provider_configuration_and_uses_bounded_policy_id(self) -> None:
+        context = _context("bank-a")
+        verification = _verification()
+        document = tenant_policy_template(context=context, verification=verification)
+        policy = tenant_policy_from_document(document)
+        self.assertEqual(policy.oidc_provider_config_digest, verification.provider_config_digest)
+        self.assertTrue(policy.policy_id.startswith("FRX-TRP-"))
+        self.assertLessEqual(len(policy.policy_id), 200)
+
     def test_capability_escalation_is_rejected(self) -> None:
         grant = TenantSubjectGrant(
             subject="user-123",
@@ -158,6 +185,7 @@ class TenantAuthorizationTests(unittest.TestCase):
             policy_id="bank-a-routing-v1",
             institution_id="bank-a",
             oidc_provider_id="bank-idp",
+            oidc_provider_config_digest="1" * 64,
             grants=(grant,),
         )
         with self.assertRaises(TenantAuthorizationError):
@@ -184,6 +212,7 @@ class TenantAuthorizationTests(unittest.TestCase):
             policy_id=policy.policy_id,
             institution_id=policy.institution_id,
             oidc_provider_id=policy.oidc_provider_id,
+            oidc_provider_config_digest=policy.oidc_provider_config_digest,
             grants=(
                 TenantSubjectGrant(
                     subject="user-123",
