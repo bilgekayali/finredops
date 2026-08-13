@@ -13,17 +13,16 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.8.5** keeps simulation as the safe default and preserves the
+> **Version 0.9.0** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision, tenant, database-RLS,
-> configuration-change and report-issuance boundaries. It adds an independent
-> external audit-anchor layer: an audit head must first pass the existing
-> institution KMS/HSM signature verification, then an exact commitment can be
-> submitted to a separately operated append-only anchor boundary. Returned
-> receipts are hash-linked, separately Ed25519-signed and offline-verifiable
-> against an anchor trust root that is distinct from institution KMS, reviewer,
-> approval and configuration-change roots. The included SQLite anchor authority
-> is a reference/test implementation, **not** a claim of physical WORM storage
-> or Byzantine transparency.
+> configuration-change, external-audit-anchor and report-issuance boundaries.
+> It adds an institution-scoped encrypted evidence-vault lifecycle on top of the
+> existing KMS/HSM envelope boundary: raw evidence can be stored only as an
+> institution/object-bound encrypted envelope, custody history is append-only,
+> retention moves only forward, legal holds are derived from verified history,
+> and recovery preserves tenant, crypto and custody bindings. Lifecycle approval
+> is deliberately separated from physical storage disposition. The included
+> SQLite vault is a reference implementation, **not** physical WORM storage.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -56,6 +55,7 @@ flowchart TD
     E --> G["Evidence receipt"]
     F --> H["Hash-chained audit"]
     G --> H
+    G --> VV["Institution-scoped encrypted evidence vault"]
     I["Untrusted SARIF"] --> J["Bounded intake + deduplication"]
     J --> K["Qualified human review"]
     O["OIDC/JWKS verified subject + role"] --> L["Signed reviewer / approval identity"]
@@ -75,6 +75,8 @@ flowchart TD
     Z --> S
     S --> H
     T["Fresh AES-256-GCM DEK + institution KMS/HSM"] --> S
+    T --> VV
+    VV --> H
     H --> U["KMS/HSM-backed audit signature"]
     U --> AA["External audit commitment"]
     AA --> AB["Independent signed anchor receipt chain"]
@@ -134,7 +136,7 @@ sources.
 
 ## Core control model
 
-| Boundary | v0.8.5 behavior |
+| Boundary | v0.9.0 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -143,6 +145,7 @@ sources.
 | Execution | Simulation by default; optional one-request TLS `HEAD` validation on approved non-production targets |
 | Active boundary | No redirects, response-body collection, discovery, crawling, payloads, credentials, shell, or production active tests |
 | Evidence handling | Deterministic minimization and redaction of likely sensitive identifiers |
+| Evidence vault | Optional institution-scoped raw-evidence boundary with KMS/HSM envelope encryption, append-only custody, forward-only retention, history-derived legal holds and recovery bundles; reference SQLite is not WORM |
 | Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
 | Finding disposition | Qualified-tester decision with evidence, final severity, impact, recommendation, and control mapping |
 | Reviewer identity | External Ed25519 assertion verification; subject/role bound to engagement, intake, finding and immutable review digest |
@@ -169,7 +172,7 @@ sources.
 | Concrete KMS adapter | AWS KMS `Encrypt`/`Decrypt` + `Sign`/`Verify`; AWS credentials/key policy remain outside FinRedOps |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, audit-anchor verification, promotion and synthetic demonstration |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, audit-anchor verification, promotion and synthetic demonstration; evidence-vault lifecycle is exposed as a provider-neutral library boundary |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only local hash chain, provider-backed signatures, independent external anchor receipts and offline-verifiable artifacts |
@@ -719,6 +722,35 @@ See **[External audit anchoring](docs/AUDIT_ANCHORING.md)** for the receipt
 contract, trust model, continuity requirements, transport boundary and explicit
 non-claims.
 
+## v0.9.0 encrypted evidence vault lifecycle
+
+v0.9.0 adds a provider-neutral raw-evidence lifecycle beside the existing
+metadata-only custody registry. An `EvidenceVaultRecord` can be created only with
+an institution-bound `envelope_v1` object whose authenticated context includes
+the institution, engagement and evidence identity. The SQLite reference store
+therefore persists ciphertext/wrapped-key material plus immutable metadata rather
+than raw evidence bytes.
+
+Custody state is reconstructed from a hash-linked append-only event history.
+Retention starts on the immutable record and may only be extended. Legal holds
+are independent from retention, can be released only while active and use
+non-reusable hold identifiers. Lifecycle eligibility is recomputed against the
+exact record digest, custody head, effective retention date and active holds.
+The approval event explicitly records that no physical storage disposition was
+executed; v0.9.0 intentionally has no destructive vault service operation.
+
+Recovery bundles contain the encrypted record plus complete verified custody
+history and no plaintext evidence. Restore is allowed only under the same
+institution boundary, verifies envelope recoverability through the configured
+KMS/HSM provider, rejects an occupied target identifier and appends a restore
+event bound to the bundle digest. Cross-institution restore fails closed.
+
+`SQLiteEvidenceVaultBackend` is an application-level append-only **reference**
+backend, not physical WORM storage. Production deployments can implement the
+same backend protocol over institution-approved storage. See
+**[Vault lifecycle](docs/VAULT_LIFECYCLE.md)** for retention, legal-hold,
+recovery and non-claim details.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
 The synthetic engagement, plan, and SARIF input ship as package data. A source
@@ -757,7 +789,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.8.5-py3-none-any.whl \
+gh attestation verify finredops-0.9.0-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -824,13 +856,19 @@ src/finredops/
   reference_anchor.py     service-side signed append-only reference authority
   anchor_cli.py           offline anchor artifact verification commands
   hardening_cli.py        v0.8 tenant/key/anchor-boundary operator commands
+  evidence_vault.py       institution-bound encrypted raw-evidence lifecycle service
+  vault_common.py         strict vault record, identifiers and retention contracts
+  vault_custody.py        custody events, state and lifecycle eligibility artifacts
+  vault_history.py        deterministic hold/retention/custody verification
+  vault_bundle.py         encrypted recovery bundle and parser
+  vault_store.py          append-only institution-scoped SQLite reference vault
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
   entrypoint.py           top-level operator/trust/approval/OIDC/change/tenant/PostgreSQL/hardening router
   release_integrity.py    packaged examples and strict local checksum verification
   examples/               installed-wheel synthetic engagement, plan, and SARIF
   evidence.py             sensitive-data minimization boundary
-  custody.py              metadata-only evidence registry and custody hash chain
+  custody.py              metadata-only external-evidence registry and custody hash chain
   audit.py                append-only SHA-256 audit chain
   store.py                institution-scoped, optional envelope-encrypted SQLite persistence
   service.py              engagement and approval state machine
@@ -842,9 +880,9 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor and evidence contracts
-docs/                     architecture, safety, assurance, operator, release, trust, change-control, tenant, PostgreSQL and external-anchor workflow
-tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant authorization, PostgreSQL RLS, KMS/envelope, anchor, packaging and end-to-end tests
+schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor and vault contracts
+docs/                     architecture, safety, assurance, operator, release, trust, tenant, database, anchor and vault workflow documentation
+tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant, PostgreSQL, KMS/envelope, anchor, vault, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -909,6 +947,13 @@ continuity state or a complete observed receipt stream. Production independence,
 anchor availability, storage immutability, witnessing, key custody and service
 authentication remain deployment responsibilities.
 
+v0.9.0 can persist deliberately selected raw evidence as institution-bound
+application-layer encrypted envelopes and verify append-only lifecycle history.
+The reference vault is not physical WORM storage and does not perform media
+sanitization. Retention periods and legal holds remain institution/legal-policy
+inputs, and production storage immutability, backup/restore governance, access
+authorization and final disposition procedures remain deployment responsibilities.
+
 ## Reference baseline
 
 The design and analysis model are informed by, but do not claim conformance with:
@@ -921,6 +966,7 @@ The design and analysis model are informed by, but do not claim conformance with
 - [ISO/IEC 27001:2022](https://www.iso.org/standard/27001) and [ISO/IEC 27002:2022](https://www.iso.org/standard/75652.html)
 - [NIST SP 800-115 — Technical Guide to Information Security Testing and Assessment](https://csrc.nist.gov/pubs/sp/800/115/final)
 - [NIST SP 800-38D — GCM authenticated encryption](https://csrc.nist.gov/pubs/sp/800/38/d/final)
+- [NIST SP 800-88 Rev.2 — Guidelines for Media Sanitization](https://csrc.nist.gov/pubs/sp/800/88/r2/final)
 - [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project/application-security-verification-standard/)
 - [GDPR — Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
@@ -950,6 +996,7 @@ Key documentation:
 - [Authenticated tenant routing and authorization](docs/TENANT_AUTHORIZATION.md)
 - [PostgreSQL RLS and service-account boundary](docs/POSTGRES_RLS.md)
 - [External audit anchoring](docs/AUDIT_ANCHORING.md)
+- [Vault lifecycle](docs/VAULT_LIFECYCLE.md)
 - [Safety boundary](docs/SAFETY_BOUNDARY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Controlled validation](docs/CONTROLLED_VALIDATION.md)

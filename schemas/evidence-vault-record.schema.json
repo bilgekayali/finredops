@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.dev/schemas/evidence-vault-record.schema.json",
+  "title": "FinRedOps Evidence Vault Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","institution_id","engagement_id","evidence_id","title","classification","media_type","size_bytes","content_sha256","source_system","collected_by","collected_at","ingested_at","retention_until","envelope","record_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.evidence-vault-record.v1"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "evidence_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "title": {"type": "string", "minLength": 1, "maxLength": 512},
+    "classification": {"enum": ["public","internal","confidential","restricted"]},
+    "media_type": {"type": "string", "minLength": 3, "maxLength": 255},
+    "size_bytes": {"type": "integer", "minimum": 0, "maximum": 20000000},
+    "content_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source_system": {"type": "string", "minLength": 1, "maxLength": 512},
+    "collected_by": {"type": "string", "minLength": 1, "maxLength": 512},
+    "collected_at": {"type": "string", "format": "date-time"},
+    "ingested_at": {"type": "string", "format": "date-time"},
+    "retention_until": {"type": "string", "format": "date"},
+    "envelope": {"type": "object"},
+    "record_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

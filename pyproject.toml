@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finredops"
-version = "0.8.5"
+version = "0.9.0"
 description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,7 @@ keywords = [
   "change-control",
   "dora",
   "envelope-encryption",
+  "evidence-vault",
   "financial-services",
   "hsm",
   "iso-27001",
@@ -25,6 +26,7 @@ keywords = [
   "penetration-testing",
   "postgresql",
   "regtech",
+  "retention",
   "red-team",
   "row-level-security",
   "sarif",
