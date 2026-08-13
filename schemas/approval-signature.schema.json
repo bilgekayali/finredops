@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/approval-signature.schema.json",
+  "title": "FinRedOps Approval Signature v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "signature_id", "issuer", "subject", "key_id", "algorithm", "purpose", "role", "engagement_id", "object_type", "object_id", "object_digest", "context_digest", "issued_at", "expires_at", "signature"],
+  "properties": {
+    "schema_version": {"const": "finredops.approval-signature.v1"},
+    "signature_id": {"type": "string", "pattern": "^FRX-APS-[A-F0-9]{24}$"},
+    "issuer": {"type": "string", "minLength": 1, "maxLength": 200},
+    "subject": {"type": "string", "minLength": 1, "maxLength": 200},
+    "key_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "algorithm": {"const": "Ed25519"},
+    "purpose": {"enum": ["risk_acceptance", "report_approval"]},
+    "role": {"enum": ["business_risk_owner", "report_approver"]},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "object_type": {"enum": ["risk_acceptance", "regulatory_report"]},
+    "object_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "object_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "context_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"}
+  }
+}
