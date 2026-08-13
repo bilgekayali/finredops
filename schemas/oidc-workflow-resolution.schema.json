@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/oidc-workflow-resolution.schema.json",
+  "title": "FinRedOps OIDC Workflow Resolution v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "engagement_id", "binding_ids", "protected_ids", "verification_ids", "subjects", "roles", "external_idp_protocol_verified", "exact_binding_coverage", "resolution_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.oidc-workflow-resolution.v1"},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "binding_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^FRX-OIDB-[A-F0-9]{24}$"}},
+    "protected_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 200}},
+    "verification_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^FRX-OIDC-[A-F0-9]{24}$"}},
+    "subjects": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 200}},
+    "roles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["qualified_tester", "review_governor", "business_risk_owner", "report_approver"]}},
+    "external_idp_protocol_verified": {"const": true},
+    "exact_binding_coverage": {"const": true},
+    "resolution_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
