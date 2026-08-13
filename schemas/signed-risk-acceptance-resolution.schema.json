@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/signed-risk-acceptance-resolution.schema.json",
+  "title": "FinRedOps Signed Risk Acceptance Resolution v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "engagement_id", "approval_trust_bundle_digest", "review_trust_resolution_digest", "acceptance_ids", "acceptance_digests", "signature_ids", "cryptographic_signatures_verified", "signature_algorithm", "resolution_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.signed-risk-acceptance-resolution.v1"},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "approval_trust_bundle_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "review_trust_resolution_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "acceptance_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^FRX-RISK-[A-F0-9]{24}$"}},
+    "acceptance_digests": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
+    "signature_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^FRX-APS-[A-F0-9]{24}$"}},
+    "cryptographic_signatures_verified": {"const": true},
+    "signature_algorithm": {"const": "Ed25519"},
+    "resolution_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
