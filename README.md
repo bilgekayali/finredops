@@ -17,12 +17,13 @@ time, separation of duties, immutable approvals, and a closed action catalog.
 > bounded active-validation, signed-decision and report-issuance boundaries. It
 > builds on v0.8.1 envelope encryption and KMS/HSM-backed evidence signatures by
 > adding authenticated application-layer tenant routing: a previously verified
-> OIDC subject/provider must have an exact, digest-bound institution grant before
-> FinRedOps creates a tenant authorization. That authorization is also bound to
-> the current institution security-context digest and a closed capability set.
-> Stored authorizations are revalidated against the source OIDC verification,
-> current policy and current institution context before use. Database-native
-> row-level security remains a separate production persistence milestone.
+> OIDC subject/provider configuration must have an exact, digest-bound institution
+> grant before FinRedOps creates a tenant authorization. That authorization is
+> also bound to the current institution security-context digest and a closed
+> capability set. Stored authorizations are revalidated against the source OIDC
+> verification, current policy and current institution context before use.
+> Database-native row-level security remains a separate production persistence
+> milestone.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -38,7 +39,7 @@ The repository contains a readable synthetic output of the governed
 The example contains no live-target data and remains a `draft`,
 human-approval-required audit-support artifact.
 
-## Why this project exists
+## Summary
 
 In regulated environments, “the AI decided to run it” is not an acceptable
 authorization model. A defensible workflow requires explicit rules of
@@ -64,7 +65,7 @@ flowchart TD
     R --> M["Trusted draft-report promotion"]
     M --> P["Two signed report approvers"]
     P --> Q["Approved, not automatically issued"]
-    O --> W["Exact-subject tenant routing policy"]
+    O --> W["Exact-subject + pinned-provider tenant routing policy"]
     W --> X["Digest-bound tenant authorization"]
     X --> S["Institution-scoped persistence"]
     S --> H
@@ -146,7 +147,7 @@ sources.
 | Approval trust roots | Dedicated public-key bundle; reviewer keys cannot authorize business risk or report approval |
 | Report approval | Exactly two distinct `report_approver` signatures bound to source draft digest + trusted-promotion digest |
 | Tenant persistence | Store handle binds one institution; snapshots/audit/idempotency use institution-scoped composite keys |
-| Authenticated tenant routing | Verified OIDC provider + exact subject grant + current policy/context digests + closed capabilities; stored authorization is revalidated before use |
+| Authenticated tenant routing | Verified OIDC provider + pinned provider-config digest + exact subject grant + current policy/context digests + closed capabilities; stored authorization is revalidated before use |
 | Authorized store writes | `store_write` capability plus institution crypto provider required, preventing silent plaintext bypass of v0.8.1 protection |
 | Institution envelope encryption | Fresh per-record AES-256-GCM DEK; DEK wrapped by matching institution KMS/HSM provider; tenant/object context authenticated |
 | Key-backed evidence | Audit-chain and execution-receipt digests can be signed/verified through the institution `audit_signing` key |
@@ -472,10 +473,11 @@ for the cryptographic model, rotation semantics and explicit limitations.
 ## v0.8.2 authenticated tenant routing and authorization
 
 v0.8.2 consumes the minimized v0.7.2 OIDC verification artifact and an explicit
-institution routing policy. One policy binds one OIDC provider to one institution
-and contains exact-subject grants; wildcards and implicit membership are not
-supported. Requested access is limited to the closed capability set
-`store_read`, `store_write`, `audit_verify`, and `crypto_use`.
+institution routing policy. One policy binds one OIDC provider **and the exact
+provider-config digest** to one institution and contains exact-subject grants;
+wildcards and implicit membership are not supported. Requested access is limited
+to the closed capability set `store_read`, `store_write`, `audit_verify`, and
+`crypto_use`.
 
 Create a conservative policy template, authorize a route, and revalidate it:
 
@@ -504,11 +506,12 @@ finredops verify-tenant-authorization \
 
 The authorization binds the exact OIDC verification digest, policy digest,
 current institution-context digest, effective role intersection and capability
-subset. It expires with the source identity. A saved authorization is not trusted
-alone: current source artifacts are required again. The authorized store session
-derives the institution namespace from those validated bindings, and writes
-require the institution cryptographic provider so the envelope-encryption path
-cannot be silently bypassed.
+subset. The policy digest itself pins the OIDC provider configuration. It
+expires with the source identity. A saved authorization is not trusted alone:
+current source artifacts are required again. The authorized store session derives
+the institution namespace from those validated bindings, and writes require the
+institution cryptographic provider so the envelope-encryption path cannot be
+silently bypassed.
 
 See **[Authenticated tenant routing and authorization](docs/TENANT_AUTHORIZATION.md)**
 for the full policy model, fail-closed rules and production non-claims.
@@ -663,13 +666,14 @@ correct IAM/key policy, does not create/export institution keys, cannot guarante
 zeroization of every transient Python byte copy, and does not yet provide
 external immutable audit anchoring.
 
-v0.8.2 authorizes one verified OIDC subject/provider to one institution through a
-digest-bound routing policy and closed capability set. It rejects stale policy or
-institution context, cross-tenant/provider/subject replay and capability
-escalation. It does **not** provide database-native RLS, API-gateway
-authentication, SCIM/group synchronization, or independently signed routing
-policy change approval. FinRedOps also does not automatically issue, deliver or
-submit an approved report.
+v0.8.2 authorizes one verified OIDC subject/provider configuration to one
+institution through a digest-bound routing policy and closed capability set. It
+rejects stale policy or institution context, changed provider configuration,
+cross-tenant/provider/subject replay and capability escalation. It does **not**
+provide database-native RLS, API-gateway authentication, SCIM/group
+synchronization, or independently signed routing policy change approval.
+FinRedOps also does not automatically issue, deliver or submit an approved
+report.
 
 ## Reference baseline
 
