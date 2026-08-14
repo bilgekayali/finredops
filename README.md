@@ -703,7 +703,7 @@ CI import-boundary check.
 A receipt binds a global sequence, the previous receipt digest, `anchor_id`,
 institution, engagement, commitment digest, anchor timestamp and anchor signing
 key. It is Ed25519-signed under a trust root separate from institution KMS/HSM,
-reviewer, approval and configuration-change trust. `verify-audit-anchor-chain`
+reviewer, approval and configuration-change trust. `verify_audit_anchor-chain`
 rejects reordered history, broken previous-digest continuity, duplicate
 commitments, backwards time and invalid/disabled/out-of-window signing keys.
 Single-receipt verification can additionally pin an expected sequence and prior
@@ -1068,7 +1068,7 @@ The design and analysis model are informed by, but do not claim conformance with
 - [FIRST Common Vulnerability Scoring System v4.0](https://www.first.org/cvss/v4-0/)
 - [SPIFFE Standards](https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/)
 - [GDPR — Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
-- [DORA — Regulation (EU) 2022/2554](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
+- [DORA — Regulation (EU) 2022/2554](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)
 - [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
 - [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
 - [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
