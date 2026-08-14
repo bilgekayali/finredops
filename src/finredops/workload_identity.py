@@ -10,7 +10,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Mapping
 
@@ -165,10 +165,10 @@ class WorkloadIdentityAttestation:
         }
 
     def core(self) -> dict[str, Any]:
+        document = self.signing_document()
+        document["schema_version"] = self.schema_version
         return {
-            "schema_version": self.schema_version,
-            **self.signing_document(),
-            "schema_version": self.schema_version,
+            **document,
             "signing_algorithm": self.signing_algorithm,
             "signature": self.signature,
             "signing_document_digest": self.signing_document_digest,
@@ -242,10 +242,10 @@ class WorkerReceiptSignature:
         }
 
     def core(self) -> dict[str, Any]:
+        document = self.signing_document()
+        document["schema_version"] = self.schema_version
         return {
-            "schema_version": self.schema_version,
-            **self.signing_document(),
-            "schema_version": self.schema_version,
+            **document,
             "signing_algorithm": self.signing_algorithm,
             "signature": self.signature,
             "signing_document_digest": self.signing_document_digest,
@@ -296,15 +296,13 @@ def create_workload_identity_attestation(
         produced = provider.sign_digest(key.key_ref, raw_digest)
     except CryptoProviderError as exc:
         raise WorkloadIdentityError("Institution KMS/HSM could not sign workload identity.") from exc
-    artifact = WorkloadIdentityAttestation(
-        **{
-            **prototype.__dict__,
-            "signing_algorithm": produced.algorithm,
-            "signature": _b64url(produced.signature),
-            "signing_document_digest": signing_document_digest,
-        }
+    artifact = replace(
+        prototype,
+        signing_algorithm=produced.algorithm,
+        signature=_b64url(produced.signature),
+        signing_document_digest=signing_document_digest,
     )
-    return WorkloadIdentityAttestation(**artifact.__dict__, artifact_digest=artifact.digest())
+    return replace(artifact, artifact_digest=artifact.digest())
 
 
 def verify_workload_identity_attestation(
@@ -373,15 +371,13 @@ def sign_worker_receipt(
         produced = provider.sign_digest(key.key_ref, raw_digest)
     except CryptoProviderError as exc:
         raise WorkloadIdentityError("Institution KMS/HSM could not sign worker receipt.") from exc
-    artifact = WorkerReceiptSignature(
-        **{
-            **prototype.__dict__,
-            "signing_algorithm": produced.algorithm,
-            "signature": _b64url(produced.signature),
-            "signing_document_digest": signing_document_digest,
-        }
+    artifact = replace(
+        prototype,
+        signing_algorithm=produced.algorithm,
+        signature=_b64url(produced.signature),
+        signing_document_digest=signing_document_digest,
     )
-    return WorkerReceiptSignature(**artifact.__dict__, artifact_digest=artifact.digest())
+    return replace(artifact, artifact_digest=artifact.digest())
 
 
 def verify_worker_receipt_signature(
@@ -436,13 +432,23 @@ def workload_identity_from_document(document: Any) -> WorkloadIdentityAttestatio
     if set(document) != expected:
         raise WorkloadIdentityError("Workload identity artifact does not match the strict v1 contract.")
     return WorkloadIdentityAttestation(
-        institution_id=document["institution_id"], worker_id=document["worker_id"],
-        deployment_id=document["deployment_id"], isolation_profile=document["isolation_profile"],
-        runtime_image_digest=document["runtime_image_digest"], network_policy_digest=document["network_policy_digest"],
-        isolation_evidence_digest=document["isolation_evidence_digest"], issued_at=parse_datetime(document["issued_at"]),
-        expires_at=parse_datetime(document["expires_at"]), key_id=document["key_id"], provider=document["provider"],
-        key_ref_digest=document["key_ref_digest"], signing_algorithm=document["signing_algorithm"],
-        signature=document["signature"], signing_document_digest=document["signing_document_digest"],
-        artifact_digest=document["artifact_digest"], schema_version=document["schema_version"],
-        control_plane_embedded=document["control_plane_embedded"], private_key_embedded=document["private_key_embedded"],
+        institution_id=document["institution_id"],
+        worker_id=document["worker_id"],
+        deployment_id=document["deployment_id"],
+        isolation_profile=document["isolation_profile"],
+        runtime_image_digest=document["runtime_image_digest"],
+        network_policy_digest=document["network_policy_digest"],
+        isolation_evidence_digest=document["isolation_evidence_digest"],
+        issued_at=parse_datetime(document["issued_at"]),
+        expires_at=parse_datetime(document["expires_at"]),
+        key_id=document["key_id"],
+        provider=document["provider"],
+        key_ref_digest=document["key_ref_digest"],
+        signing_algorithm=document["signing_algorithm"],
+        signature=document["signature"],
+        signing_document_digest=document["signing_document_digest"],
+        artifact_digest=document["artifact_digest"],
+        schema_version=document["schema_version"],
+        control_plane_embedded=document["control_plane_embedded"],
+        private_key_embedded=document["private_key_embedded"],
     )
