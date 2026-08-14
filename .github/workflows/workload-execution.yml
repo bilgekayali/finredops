@@ -1,0 +1,84 @@
+name: Isolated Workload Boundary
+
+on:
+  push:
+    paths:
+      - 'src/finredops/workload_*.py'
+      - 'schemas/workload-*.json'
+      - 'schemas/worker-*.json'
+      - 'schemas/one-time-test-account-grant.schema.json'
+      - 'schemas/emergency-stop-state.schema.json'
+      - 'tests/test_workload_execution.py'
+      - '.github/workflows/workload-execution.yml'
+      - 'pyproject.toml'
+  pull_request:
+    paths:
+      - 'src/finredops/workload_*.py'
+      - 'schemas/workload-*.json'
+      - 'schemas/worker-*.json'
+      - 'schemas/one-time-test-account-grant.schema.json'
+      - 'schemas/emergency-stop-state.schema.json'
+      - 'tests/test_workload_execution.py'
+      - '.github/workflows/workload-execution.yml'
+      - 'pyproject.toml'
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-workload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Run workload regression tests
+        run: python -m unittest tests.test_workload_execution -v
+      - name: Enforce control-plane capability boundary
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          paths = [
+              Path('src/finredops/workload_identity.py'),
+              Path('src/finredops/workload_execution.py'),
+              Path('src/finredops/workload_ledger.py'),
+          ]
+          banned_imports = {
+              'socket', 'subprocess', 'requests', 'httpx', 'urllib', 'ftplib',
+              'telnetlib', 'paramiko', 'asyncssh'
+          }
+          banned_calls = {'exec', 'eval', 'compile', '__import__'}
+          for path in paths:
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          if alias.name.split('.')[0] in banned_imports:
+                              raise SystemExit(f'{path}: forbidden import {alias.name}')
+                  elif isinstance(node, ast.ImportFrom):
+                      if (node.module or '').split('.')[0] in banned_imports:
+                          raise SystemExit(f'{path}: forbidden import {node.module}')
+                  elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                      if node.func.id in banned_calls:
+                          raise SystemExit(f'{path}: forbidden dynamic execution {node.func.id}')
+          print('isolated workload control-plane boundary verified')
+          PY
+      - name: Enforce v0.9.2 invariants
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tomllib
+          data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+          assert data['project']['version'] == '0.9.2'
+          source = pathlib.Path('src/finredops/workload_execution.py').read_text()
+          assert 'production_allowed: bool = False' in source
+          assert 'autonomous_discovery_allowed: bool = False' in source
+          assert 'arbitrary_command_allowed: bool = False' in source
+          assert 'request_limit: int = 1' in source
+          print('v0.9.2 invariant pins verified')
+          PY
