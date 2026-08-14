@@ -19,6 +19,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from .anchor_models import AuditAnchorCommitment, AuditAnchorReceipt, b64url, receipt_from_document
 from .models import canonical_json
 
+_SCHEMA_VERSION = 1
+
 
 def _digest_bytes(document: dict[str, object]) -> tuple[str, bytes]:
     value = hashlib.sha256(canonical_json(document).encode("utf-8")).digest()
@@ -52,6 +54,11 @@ class ReferenceAppendOnlyAnchorAuthority:
     def _initialize(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
+            version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            if version not in {0, _SCHEMA_VERSION}:
+                raise RuntimeError(
+                    f"Unsupported reference anchor SQLite schema version {version}."
+                )
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS anchor_receipts (
@@ -65,6 +72,7 @@ class ReferenceAppendOnlyAnchorAuthority:
                 )
                 """
             )
+            connection.execute(f"PRAGMA user_version={_SCHEMA_VERSION}")
         if self.path.exists() and os.name == "posix":
             os.chmod(self.path, 0o600)
 
