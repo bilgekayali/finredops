@@ -42,8 +42,8 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] pre/post-request kill-switch checks and safe failure receipts;
 - [x] HSTS, CSP, MIME, cookie and certificate-expiry draft findings;
 - [x] deterministic conversion from validated receipts to report findings;
-- [ ] isolated signed worker and institution-owned workload identity;
-- [ ] authenticated test-account and authorization-boundary modules;
+- [x] isolated signed worker and institution-owned workload identity;
+- [x] authenticated test-account and authorization-boundary modules;
 - [ ] approved source-package SAST/dependency/secret-analysis adapters;
 - [ ] independently reviewed production-validation policy overlay;
 - [x] qualified tester CLI for false-positive disposition and severity override;
@@ -257,11 +257,11 @@ implemented, tested, documented and reviewed.
 
 ### v0.9.2 — isolated workload execution
 
-- [ ] isolated signed worker with institution-owned workload identity;
-- [ ] authenticated one-time test-account / authorization-boundary modules;
-- [ ] strict egress allowlisting and workload-to-engagement binding;
-- [ ] signed worker receipts and emergency-stop verification;
-- [ ] active capability remains bounded, non-production and separately approved.
+- [x] isolated signed worker with institution-owned workload identity;
+- [x] authenticated one-time test-account / authorization-boundary modules;
+- [x] strict egress allowlisting and workload-to-engagement binding;
+- [x] signed worker receipts and emergency-stop verification;
+- [x] active capability remains bounded, non-production and separately approved.
 
 ### v0.9.3 — release-candidate hardening
 
