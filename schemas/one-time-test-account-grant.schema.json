@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.dev/schemas/one-time-test-account-grant.schema.json",
+  "title": "FinRedOps one-time test-account grant v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","grant_id","institution_id","engagement_id","account_id","account_reference_digest","proposal_digest","action_id","target","issued_at","expires_at","max_uses","credential_material_embedded","grant_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.one-time-test-account-grant.v1"},
+    "grant_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "account_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "account_reference_digest": {"$ref": "#/$defs/digest"},
+    "proposal_digest": {"$ref": "#/$defs/digest"},
+    "action_id": {"const": "http.security_posture.validate"},
+    "target": {"type": "string", "minLength": 1, "maxLength": 253},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "max_uses": {"const": 1},
+    "credential_material_embedded": {"const": false},
+    "grant_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

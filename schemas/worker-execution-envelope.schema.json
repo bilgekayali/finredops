@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.dev/schemas/worker-execution-envelope.schema.json",
+  "title": "FinRedOps worker execution envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","institution_id","worker_id","deployment_id","execution_id","workload_identity_digest","lease_digest","test_account_grant_digest","egress_rule_digest","emergency_stop_state_digest","observed_peer_address","request_count","account_grant_consumed","receipt","envelope_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.worker-execution-envelope.v1"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "worker_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "deployment_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "execution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "workload_identity_digest": {"$ref": "#/$defs/digest"},
+    "lease_digest": {"$ref": "#/$defs/digest"},
+    "test_account_grant_digest": {"$ref": "#/$defs/digest"},
+    "egress_rule_digest": {"$ref": "#/$defs/digest"},
+    "emergency_stop_state_digest": {"$ref": "#/$defs/digest"},
+    "observed_peer_address": {"type": "string", "minLength": 2, "maxLength": 64},
+    "request_count": {"const": 1},
+    "account_grant_consumed": {"const": true},
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["execution_id","proposal_id","proposal_digest","status","runner","started_at","finished_at","evidence","evidence_digest"],
+      "properties": {
+        "execution_id": {"type": "string", "minLength": 1},
+        "proposal_id": {"type": "string", "minLength": 1},
+        "proposal_digest": {"$ref": "#/$defs/digest"},
+        "status": {"enum": ["simulated","validated","failed","denied","cancelled"]},
+        "runner": {"type": "string", "minLength": 1, "maxLength": 512},
+        "started_at": {"type": "string", "format": "date-time"},
+        "finished_at": {"type": "string", "format": "date-time"},
+        "evidence": {"type": "object"},
+        "evidence_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "envelope_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}
