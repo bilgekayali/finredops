@@ -1,68 +1,115 @@
 # Threat model
 
-## Assets to protect
+This threat model covers the FinRedOps v0.9.3 production-reference candidate
+architecture. It documents repository controls and residual deployment risks; it
+is not an independent penetration test, legal assessment or certification.
 
-- authorization intent and scope;
-- approval identity, role, decision, digest, and validity window;
-- action proposals and policy outcomes;
-- evidence integrity and audit continuity;
-- institution and customer data that must never enter this prototype.
+## Security objectives
 
-## Principal threats and v0.5 mitigations
+Protect:
 
-| Threat | Mitigation | Residual limitation |
+- testing authorization intent, exact target/action scope and engagement windows;
+- authenticated human identity and role separation for review, risk, report and
+  configuration decisions;
+- institution/tenant isolation across application and database boundaries;
+- KMS/HSM key-reference integrity and encrypted persisted content;
+- evidence confidentiality, custody, retention and legal-hold history;
+- audit continuity and independently anchored audit commitments;
+- software supply-chain/assurance evidence without turning machine output into a
+  final conclusion;
+- isolated-worker authorization, one-time test-account use, egress binding and
+  signed execution receipts;
+- release/migration compatibility and recoverability.
+
+## Trust boundaries
+
+1. **AI/model → planning gateway.** Model output is untrusted typed input; it
+   cannot authorize or execute.
+2. **Operator/IdP → human decision artifacts.** OIDC/JWKS verification and
+   purpose-separated signature trust roots establish bounded evidence of subject
+   and role; external identity lifecycle remains outside FinRedOps.
+3. **Tenant authorization → persistence.** Application routing binds one verified
+   subject/provider/policy/context to one institution; PostgreSQL independently
+   derives institution from authenticated `session_user` and FORCE RLS.
+4. **Application → institution KMS/HSM.** FinRedOps holds opaque key references,
+   not institution private keys. Provider IAM/key policy is external.
+5. **Application store → external audit anchor.** Anchor receipt trust is
+   purpose-separated from local DB and institution KMS/HSM trust.
+6. **Application → evidence vault.** Raw evidence enters only deliberate,
+   institution-bound encrypted vault records; custody history determines lifecycle
+   state.
+7. **Control plane → isolated worker.** The control plane validates a signed
+   workload identity and exact single-use lease; network/process execution occurs
+   in a separately operated provider boundary.
+8. **Build/repository → deployed release.** Checksums and GitHub/Sigstore
+   provenance must be independently verified by the consumer.
+
+## Principal threats and controls
+
+| Threat | Repository control | Residual/deployment risk |
 |---|---|---|
-| Prompt injection adds a dangerous action | Strict schema and closed catalog | External model gateway still needs content controls |
-| Model smuggles executable text | Scalar parameters plus forbidden-key checks; no interpreter | Semantic inspection of all values is not implemented |
-| Proposal changes after approval | Approval binds to canonical SHA-256 digest | SHA-256 digest is not a digital signature |
-| Requester self-approves | Role separation and distinct-actor rules | Demo identities are strings, not authenticated principals |
-| Stale approval is replayed | Subject digest and expiry checks | Durable replay ledger is future work |
-| Target escapes scope | Exact canonical hostname/IP/CIDR match; exclusions win | Asset ownership verification is external |
-| Unsupported action runs | Policy denies unknown/reserved actions and requires explicit runner injection for the one controlled action | Institution-specific adapters remain external |
-| Active request escapes target | Exact scope, exclusions, one-time DNS resolution, unsafe-address denial, no redirects | Asset ownership and DNS control remain external |
-| Active validation affects service | One HEAD request, 1–5 second timeout, engagement rate ceiling, non-production restriction and kill-switch checks | Distributed stop propagation and service-side behavior remain external |
-| Response leaks sensitive data | No response body; cookie values and redirect locations are not persisted; peer address is digested | Headers can still contain unexpected sensitive values before minimization |
-| Malformed SARIF exhausts the intake process | Uncompressed UTF-8 only; file, run, result, rule, tag, position and stored-text limits; invalid structures fail closed | A production service still needs process/memory quotas and malware controls |
-| SARIF artifact URI leaks a workstation path or triggers retrieval | No URI dereference; only safe repository-relative paths survive; absolute, external and traversal locations become opaque digests | Reviewers need vault access to correlate opaque locations with raw evidence |
-| Scanner output carries secrets or source snippets | Sensitive text is minimized; embedded snippets/fixes/flows are ignored; raw SARIF is not embedded | Institution DLP and evidence-vault controls remain authoritative |
-| Scanner result is treated as a confirmed vulnerability | Imported severity is explicitly non-final, capped at high and fixed to pending human review | Qualified testers can still make an incorrect disposition |
-| Duplicate scanner output inflates risk counts | Stable tool/rule fingerprints and deterministic occurrence merging | Poor source fingerprints can still reduce correlation quality |
-| Canonical intake is altered after import | Source and batch SHA-256 digests plus strict round-trip validation | Digests are not external signatures or immutable timestamps |
-| A reviewer decision is copied to a changed finding | Review ID and digest bind the exact batch digest and candidate fingerprint | Reviewer identity and time are asserted strings, not authenticated claims |
-| Machine severity silently becomes final severity | Confirmed reviews require an explicit human severity; every change needs a substantive override rationale | The reviewer can still make an incorrect severity decision |
-| A false positive carries hidden report conclusions | Non-confirmed dispositions reject final severity, impact, recommendation and control conclusions | Free-text rationale still requires human quality review |
-| Duplicate disposition hides an unresolved finding | A duplicate must point directly to a confirmed primary candidate; chains and self-reference fail closed | Cross-batch duplicate correlation remains external |
-| Tester accepts the risk they assessed | Risk acceptance requires a distinct business-risk-owner identity, approval evidence, compensating controls and expiry | String identities are not authenticated and organizational conflicts need external IAM policy |
-| Expired risk acceptance remains reported as active | Summary evaluation returns an expired acceptance to confirmed state | Operational reminders and renewal workflow remain external |
-| A review queue is treated as a final report | Summary records audit-support-only and `report_promotion_performed: false` | A downstream consumer can ignore the stated contract |
-| Operational failure becomes a false finding | Failure receipts carry safe codes and no vulnerability | Human reviewers must still assess incomplete coverage |
-| Activity continues during an incident | Emergency stop plus paused state | Distributed kill-switch propagation is future work |
-| Audit history is edited | Previous-hash chain and verifier | A privileged actor could replace the whole unanchored log |
-| Stored audit history is forked | SQLite accepts only an exact extension of the persisted prefix | External immutable anchoring is not yet implemented |
-| Sensitive data enters evidence | Deterministic secret/identifier redaction before receipt creation | Institution-owned DLP and encrypted evidence vault remain external |
-| Broad or production-unsafe scope is approved | Versioned institution preflight blocks breadth, risk, contact, rate, and TTL violations | Asset ownership and legal authority remain external |
-| A stale regulation is treated as current | Versioned, dated, source-linked control registry and applicability notes | Legal/compliance must revalidate every engagement |
-| Legal or standards scope is inferred automatically | Tri-state, human-confirmed BDDK/SPK/KVKK/TSE/ISO applicability | Authorized reviewers can still make an incorrect decision |
-| Raw evidence leaks through the dossier | Approved opaque URI schemes and metadata-only ZIP contract | The institution-owned vault remains outside this prototype |
-| Evidence metadata is rewritten | Content digest plus append-only custody hash chain | Hashes are not external signatures or immutable timestamps |
-| A report revision hides regression | Stable-ID delta lists missing, reopened, new and worsened records | Reviewers must preserve stable identifiers |
-| A bundle is altered or path-crafted | Exact manifest, size/digest checks, path traversal/symlink/encryption rejection | External PKI signing is not implemented |
-| Automation declares its own report final | Issued/approved reports require two distinct human approval records | Demo identities are not cryptographically authenticated |
-| Dashboard injects HTML | Contextual HTML escaping and CSP | Production UI security review is still required |
+| Prompt injection requests a dangerous action | Strict proposal schema, closed catalog, deny-by-default policy | External model/content gateway still needs controls |
+| Executable text is smuggled through a proposal | No free-form command field; forbidden keys; built-in runner has no interpreter | Future adapters require separate review |
+| Proposal changes after approval | Canonical digest-bound approvals/policy/signatures | Authorized humans may still approve unsafe intent |
+| Self-approval or role collapse | Distinct purpose/role checks and separate trust roots | External IAM/HR conflict policy remains authoritative |
+| Stale/replayed external identity | OIDC signature/issuer/audience/nonce/time/ACR checks; signed-object binding | IdP compromise or incorrect provider policy remains external |
+| Token/JWKS retrieval becomes SSRF/network capability | OIDC verifier uses operator-supplied pinned config/JWKS and no discovery/network path | Operators must refresh trust data safely |
+| Tenant id is selected by an untrusted request | Authorized tenant session derives institution from verified policy/context | Policy administrator can still misconfigure grants |
+| Database tenant bypass | PostgreSQL service identity, administrator registry, FORCE RLS, live privilege verification | Superuser/DBA/pooler/cloud-IAM bypass remains deployment risk |
+| Cross-tenant key/data replay | Institution id in store keys, envelope AAD, tenant authorization and provider context | KMS/key-policy mistakes can defeat intended separation |
+| Plaintext persistence bypass | Authenticated writes require configured crypto; encrypted store reports protection state | Legacy/local plaintext mode still exists outside authenticated production path |
+| Envelope ciphertext is modified/replayed | AES-256-GCM + institution/object/key AAD + plaintext/envelope digests | Availability and KMS compromise are not solved by AEAD |
+| KMS/HSM private key leaks into app | Provider interface exposes wrap/unwrap/sign/verify only; key refs reject obvious secrets | Provider SDK/host credentials and IAM remain external |
+| Disabled/rotated key invalidates history | Active/retiring/disabled lifecycle and exact historical key lookup | Operator can disable a still-required key; backup key availability must be governed |
+| Config policy/service mapping changes without approval | Exact prior/target digests and two purpose-separated signed governors | Privileged administrator can act outside guarded CLI |
+| Local audit history is replaced | Hash chain, KMS/HSM audit signature, independent external anchor receipt chain | Anchor independence, availability, witnessing/WORM are deployment choices |
+| Anchor ledger is rewritten/truncated | Signed receipt sequence/previous digest and offline continuity verification | Detecting truncation requires independently retained continuity state |
+| Raw evidence leaks from normal artifacts | Minimization, opaque refs, raw source excluded from SARIF/CycloneDX normalization | Humans/tools can still introduce sensitive free text |
+| Vault record/custody history is altered | Envelope encryption, strict record digests, append-only hash-linked custody verification | Reference SQLite is not physical WORM |
+| Legal hold/retention is shortened | Retention moves only forward; hold state derives from complete history | Correct retention periods/legal applicability remain human/legal inputs |
+| Vault restore crosses institutions | Record/envelope/custody institution bindings and restore verification | Backup platform access controls remain external |
+| Scanner/SBOM output becomes a final vulnerability | SARIF/CycloneDX candidates require qualified human review | Human reviewer can still be wrong |
+| CVSS becomes financial/regulatory risk automatically | CVSS v4 artifact explicitly technical-only; business impact separate | Business-risk judgment remains human |
+| ASVS/framework tag becomes certification | Versioned digest-bound coverage, human status, explicit non-certification | External audit/legal interpretation still required |
+| Malformed machine evidence exhausts parser | Bounded UTF-8 JSON/SARIF/CycloneDX counts, sizes, depth and stored text | Service-level CPU/memory/malware quotas remain deployment controls |
+| Active validation escapes target | Exact scope/exclusions, non-production gate, one bounded HEAD request, no redirects/body/discovery | DNS/asset ownership and remote service behavior remain external |
+| Isolated worker impersonation | Short-lived institution workload-key-backed identity binds worker/deployment/image/network-policy/isolation evidence | Signed evidence does not prove VM/container/kernel isolation is correct |
+| Worker receives a reusable credential | One-time grant contains only opaque account reference digest and is atomically consumed before call | External credential resolver must enforce its own one-time/least-privilege semantics |
+| Worker egress escapes policy | Lease binds exact target/port/path/CIDRs and signed result reports observed peer | Kernel/SDN/firewall enforcement is external and must match the signed policy |
+| Worker result is forged or replayed | Workload-key signature binds envelope, identity, lease and one-time grant | Compromised workload signing key undermines authenticity |
+| Emergency stop activates during execution | Stop checked before and after provider call; changed state rejects result | Cannot retroactively undo a request already sent; worker platform needs its own kill path |
+| Transaction failure leaves partial governance/vault state | Explicit SQLite transactions/rollback; injected-failure regression tests | Filesystem/DB/storage faults outside tested cases still need native recovery |
+| Older binary opens newer schema | Version guards reject future DB versions; compatibility manifest documents current/upgradeable versions | Operators must not manually rewrite schema version markers |
+| Migration rollback corrupts data | No automatic destructive downgrade; restore verified pre-migration backup | Backup consistency/RPO/RTO are institution responsibilities |
+| Package source differs from reviewed release | Wheel/sdist checksums, tag binding, installed-wheel smoke and GitHub/Sigstore provenance | Consumer must actually verify provenance and resolved dependencies |
+| Automation declares final compliance/report issuance | Qualified review + signed risk when used + two report approvers; issuance remains external | Downstream systems can ignore contract unless deployment governance prevents it |
 
 ## Misuse cases
 
-FinRedOps must not be extended by adding a general shell action, accepting raw
-model tool calls, silently expanding CIDRs, discovering targets, embedding
-credentials in proposals, or treating a model score as authorization. Such a
-change violates the project boundary even if guarded by a prompt.
+The following are architectural boundary violations, not feature requests to add
+casually:
+
+- general shell/command execution;
+- autonomous target discovery or credential attacks;
+- production active testing through the built-in runner/worker lease;
+- model-generated exploit payload execution;
+- embedding passwords/tokens/private keys in proposals or one-time grants;
+- weakening RLS/KMS/signature checks to restore availability;
+- treating CVSS/ASVS/CycloneDX/regulatory mappings as automatic compliance;
+- silently accepting unknown future schemas or mutating old schema semantics;
+- using local hash chains or the reference anchor/vault as a WORM/non-repudiation
+  guarantee.
 
 ## Assumptions
 
-The demo runs locally, contains synthetic data, and is operated by a trusted
-developer. The default demo remains simulation-only and its API is read-only but
-unauthenticated. Explicit active validation is limited to approved non-production
-targets. SARIF import and review read local files but perform no scanner execution,
-artifact retrieval or report promotion. The project does not provide
-authenticated identities, multi-tenancy, high availability, institution-owned
-key management, evidence-vault controls, or regulatory record retention.
+Production-reference use assumes separately managed external identity, database,
+KMS/HSM, backup, anchor and isolated-worker environments. Operators are expected
+to enforce least privilege, asset/legal authorization, service-account isolation,
+key lifecycle, consistent backups, worker egress/sandbox controls, monitoring and
+incident response outside the repository.
+
+The repository still supports local/demo paths and simulation. A feature being
+present in the reference architecture does not prove a deployment configured it
+correctly. v1 readiness therefore also requires explicit independent security,
+legal and accessibility review disposition or documented deployment-owner/risk-
+acceptance treatment; v0.9.3 does not claim those reviews have occurred.
