@@ -13,14 +13,15 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.9.1** keeps simulation as the safe default and preserves the
+> **Version 0.9.2** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision, tenant, database-RLS,
-> configuration-change, external-audit-anchor, encrypted-evidence-vault and
-> report-issuance boundaries. It adds version-pinned assurance evidence for
-> CycloneDX 1.7 supply-chain intake, CVSS 4.0 technical-severity validation and
-> OWASP ASVS 5.0.0 requirement coverage. These artifacts remain inputs to
-> qualified human review: they do not infer regulatory applicability, convert
-> CVSS into financial/business risk, or certify compliance.
+> configuration-change, external-audit-anchor, encrypted-evidence-vault,
+> assurance-evidence and report-issuance boundaries. It adds a provider-neutral
+> isolated-workload boundary with short-lived institution-owned workload
+> identity, single-use test-account grants, exact egress-policy binding,
+> emergency-stop state verification and signed worker-result receipts. The
+> control plane does not create a generic shell/network executor and still
+> refuses production active testing, autonomous discovery and arbitrary commands.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -51,6 +52,11 @@ flowchart TD
     C -->|allowed| E["Synthetic or bounded controlled runner"]
     C -->|denied| F["Recorded denial"]
     E --> G["Evidence receipt"]
+    C --> WI["Short-lived institution workload identity"]
+    WI --> WL["Single-use lease + egress + emergency stop"]
+    WL --> WX["Separately operated isolated worker"]
+    WX --> WS["Signed worker execution envelope"]
+    WS --> G
     F --> H["Hash-chained audit"]
     G --> H
     G --> VV["Institution-scoped encrypted evidence vault"]
@@ -137,14 +143,20 @@ coverage model, version pins and explicit non-claims.
 
 ## Core control model
 
-| Boundary | v0.9.1 behavior |
+| Boundary | v0.9.2 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
 | Action scope | Closed typed catalog; no free-form command field |
 | Approvals | Role-separated, digest-bound, time-limited human decisions |
 | Execution | Simulation by default; optional one-request TLS `HEAD` validation on approved non-production targets |
-| Active boundary | No redirects, response-body collection, discovery, crawling, payloads, credentials, shell, or production active tests |
+| Active boundary | No redirects, response-body collection, discovery, crawling, payloads, embedded credentials, shell, or production active tests |
+| Isolated worker | Separately operated provider boundary; the FinRedOps control-plane workload modules have no built-in network/process execution capability |
+| Workload identity | Short-lived KMS/HSM-backed institution identity binds worker/deployment, runtime-image digest, isolation-evidence digest and exact network-policy digest |
+| Test account | One-time grant bound to institution/engagement/proposal/action/target; stores only account reference digest and no credential material |
+| Workload egress | Exact action/target/port/path plus bounded peer CIDRs and one-request limit; signed result must report an allowed peer |
+| Emergency stop | State checked before and after provider invocation; changed/active state rejects execution or result promotion, but does not claim rollback of a request already sent |
+| Worker result | Execution envelope is bound to identity, lease, grant, egress, stop state and receipt, then verified under the institution workload key |
 | Evidence handling | Deterministic minimization and redaction of likely sensitive identifiers |
 | Evidence vault | Optional institution-scoped raw-evidence boundary with KMS/HSM envelope encryption, append-only custody, forward-only retention, history-derived legal holds and recovery bundles; reference SQLite is not WORM |
 | Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
@@ -177,7 +189,7 @@ coverage model, version pins and explicit non-claims.
 | Concrete KMS adapter | AWS KMS `Encrypt`/`Decrypt` + `Sign`/`Verify`; AWS credentials/key policy remain outside FinRedOps |
 | Regulatory assurance | BDDK, SPK, KVKK, TSE and ISO applicability/crosswalk support plus international analysis baselines |
 | Draft promotion | Complete review set plus human-supplied asset, owner, and due date; never issues a report |
-| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, audit-anchor verification, promotion and synthetic demonstration; vault and v0.9.1 assurance artifacts remain provider-neutral library boundaries |
+| Operator workflow | One CLI surface for legacy commands, trust verification, signed approvals, OIDC binding, signed change control, authenticated tenant routing, PostgreSQL runtime verification, audit-anchor verification, promotion and synthetic demonstration; vault, assurance and isolated-workload boundaries remain provider-neutral library surfaces |
 | Release integrity | Wheel/sdist checksums, packaged examples, clean-wheel smoke test, version-tag binding, GitHub/Sigstore provenance |
 | Reporting | Audit-support report templates and deterministic validation |
 | Accountability | Append-only local hash chain, provider-backed signatures, independent external anchor receipts and offline-verifiable artifacts |
@@ -439,7 +451,9 @@ finredops validate-institution-context \
 
 The context contains only opaque provider references and a deterministic digest.
 It rejects obvious private-key material and requires one active data-encryption
-reference and one active audit-signing reference.
+reference and one active audit-signing reference. v0.9.2 isolated-worker use
+additionally requires exactly one active `workload_identity` key reference; the
+older store/envelope paths do not require that optional key purpose.
 
 Verify one institution-scoped persisted audit chain:
 
@@ -689,7 +703,7 @@ CI import-boundary check.
 A receipt binds a global sequence, the previous receipt digest, `anchor_id`,
 institution, engagement, commitment digest, anchor timestamp and anchor signing
 key. It is Ed25519-signed under a trust root separate from institution KMS/HSM,
-reviewer, approval and configuration-change trust. `verify_audit_anchor-chain`
+reviewer, approval and configuration-change trust. `verify-audit-anchor-chain`
 rejects reordered history, broken previous-digest continuity, duplicate
 commitments, backwards time and invalid/disabled/out-of-window signing keys.
 Single-receipt verification can additionally pin an expected sequence and prior
@@ -782,6 +796,34 @@ audit dossier retains the governed report metadata. See
 **[Assurance completeness](docs/ASSURANCE_COMPLETENESS.md)** for supported input
 boundaries, linkage semantics and non-claims.
 
+## v0.9.2 isolated workload execution
+
+v0.9.2 introduces an explicit boundary between the governance control plane and
+a separately operated active-validation worker. The control plane verifies a
+short-lived KMS/HSM-backed institution workload identity, an exact policy-approved
+proposal, one one-time test-account grant, a single-request egress rule and the
+current emergency-stop generation before an external provider can be invoked.
+
+The execution lease is valid for at most 15 minutes and cannot enable production
+active testing, autonomous discovery or arbitrary commands. It cannot outlive
+the workload identity, test-account grant or engagement window. The account
+grant contains only an opaque account-reference digest and is atomically consumed
+before worker invocation so it cannot be replayed after a failed attempt.
+
+The external worker returns a typed execution envelope plus a workload-key-backed
+signature. Verification binds the result to the exact identity, lease, grant,
+egress rule, emergency-stop state, observed peer address and underlying
+`ExecutionReceipt`. The stop state is checked again after the call; a change
+rejects the result for promotion. This does not claim retroactive rollback of a
+request already sent by the external worker.
+
+The repository does not claim to create or independently attest a secure
+container/VM/sandbox, enforce kernel/SDN egress, provision test-account secrets,
+or implement SPIFFE/SPIRE. Those deployment controls remain institution
+responsibilities. See **[Isolated workload execution](docs/WORKLOAD_EXECUTION.md)**
+for the trust flow, provider contract, replay behavior, egress semantics and
+explicit non-claims.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
 The synthetic engagement, plan, and SARIF input ship as package data. A source
@@ -820,7 +862,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.9.1-py3-none-any.whl \
+gh attestation verify finredops-0.9.2-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -858,6 +900,9 @@ src/finredops/
   catalog.py              closed catalog of typed actions
   runner.py               network-free synthetic evidence runner
   validation.py           optional bounded active validation
+  workload_identity.py    KMS/HSM-backed short-lived external worker identity and signed receipts
+  workload_execution.py   exact non-production execution lease, egress, one-time grant and stop verification
+  workload_ledger.py      atomic institution-scoped one-time grant consumption ledger
   intake.py               bounded SARIF parser and canonical candidates
   supply_chain.py         bounded CycloneDX 1.7 assurance intake
   cvss40.py               CVSS 4.0 technical severity validation
@@ -914,9 +959,9 @@ src/finredops/
   bundle.py               deterministic audit dossier builder and verifier
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
-schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor, vault and assurance contracts
-docs/                     architecture, safety, assurance, operator, release, trust, tenant, database, anchor, vault and workflow documentation
-tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant, PostgreSQL, KMS/envelope, anchor, vault, assurance, packaging and end-to-end tests
+schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor, vault, assurance and workload contracts
+docs/                     architecture, safety, assurance, operator, release, trust, tenant, database, anchor, vault and workload documentation
+tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant, PostgreSQL, KMS/envelope, anchor, vault, assurance, workload, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -994,6 +1039,15 @@ chain data trustworthy merely by parsing it, normalize every CycloneDX extension
 turn CVSS into financial or regulatory risk, certify ASVS compliance, infer
 regulatory applicability, or bypass qualified human review.
 
+v0.9.2 can cryptographically bind an external worker identity and returned result
+to one approved non-production proposal, one-time grant, network-policy digest,
+egress rule and emergency-stop state. It does not independently prove the
+worker's VM/container/kernel isolation or enforcement of a firewall/SDN policy,
+does not provision credentials, does not implement SPIFFE/SPIRE, and cannot undo
+a network request already sent before an emergency-stop change is observed.
+Worker runtime hardening, network enforcement, workload-key policy, credential
+resolution and emergency termination remain deployment responsibilities.
+
 ## Reference baseline
 
 The design and analysis model are informed by, but do not claim conformance with:
@@ -1007,12 +1061,14 @@ The design and analysis model are informed by, but do not claim conformance with
 - [NIST SP 800-115 — Technical Guide to Information Security Testing and Assessment](https://csrc.nist.gov/pubs/sp/800/115/final)
 - [NIST SP 800-38D — GCM authenticated encryption](https://csrc.nist.gov/pubs/sp/800/38/d/final)
 - [NIST SP 800-88 Rev.2 — Guidelines for Media Sanitization](https://csrc.nist.gov/pubs/sp/800/88/r2/final)
+- [NIST SP 800-207A — Zero Trust Architecture Model for Access Control in Cloud-Native Applications](https://csrc.nist.gov/pubs/sp/800/207/a/final)
 - [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence)
 - [OWASP Application Security Verification Standard](https://owasp.org/www-project/application-security-verification-standard/)
 - [CycloneDX Specification 1.7](https://cyclonedx.org/docs/1.7/json/)
 - [FIRST Common Vulnerability Scoring System v4.0](https://www.first.org/cvss/v4-0/)
+- [SPIFFE Standards](https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/)
 - [GDPR — Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
-- [DORA — Regulation (EU) 2022/2554](https://eur-lex.europa.eu/eli/reg/2022/2554/oj)
+- [DORA — Regulation (EU) 2022/2554](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
 - [Commission Delegated Regulation (EU) 2025/1190](https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj/eng)
 - [ECB TIBER-EU framework](https://www.ecb.europa.eu/paym/cyber-resilience/tiber-eu/html/index.en.html)
 - [MITRE ATT&CK adversary emulation plans](https://attack.mitre.org/resources/adversary-emulation-plans/)
@@ -1030,6 +1086,7 @@ Key documentation:
 
 - [Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)
 - [Assurance completeness](docs/ASSURANCE_COMPLETENESS.md)
+- [Isolated workload execution](docs/WORKLOAD_EXECUTION.md)
 - [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
 - [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
 - [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
