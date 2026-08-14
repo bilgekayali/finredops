@@ -333,12 +333,10 @@ class WorkloadExecutionTests(unittest.TestCase):
                 )
         self.assertEqual(worker.calls, 1)
 
-    def test_peer_outside_signed_egress_policy_is_rejected(self) -> None:
-        institution, provider, _engagement, _proposal, _policy, egress, identity, grant, stop, lease = objects()
+    def test_signed_peer_outside_egress_policy_is_rejected(self) -> None:
+        institution, provider, engagement, proposal, _policy, egress, identity, grant, stop, lease = objects()
         worker = FakeIsolatedWorker(institution, provider)
-        request_objects = objects()
-        _i, _p, engagement, proposal, policy, _e, _id, _g, _s, _l = request_objects
-        envelope, signature = worker.execute(
+        envelope, _signature = worker.execute(
             type("Request", (), {
                 "proposal": proposal,
                 "engagement": engagement,
@@ -350,10 +348,19 @@ class WorkloadExecutionTests(unittest.TestCase):
             })()
         )
         changed = replace(envelope, observed_peer_address="198.51.100.10")
+        changed_signature = sign_worker_receipt(
+            institution_context=institution,
+            provider=provider,
+            identity=identity,
+            execution_id=changed.execution_id,
+            execution_envelope_digest=changed.digest(),
+            lease_digest=lease.digest(),
+            signed_at=NOW + timedelta(seconds=1),
+        )
         self.assertFalse(
             verify_signed_worker_result(
                 changed,
-                signature,
+                changed_signature,
                 institution_context=institution,
                 crypto_provider=provider,
                 identity=identity,
