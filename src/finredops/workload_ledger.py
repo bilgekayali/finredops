@@ -11,6 +11,7 @@ from .models import ensure_aware
 
 _DIGEST = re.compile(r"^[a-f0-9]{64}$")
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@/+~-]{0,199}$")
+_SCHEMA_VERSION = 1
 
 
 class WorkloadLedgerError(RuntimeError):
@@ -23,6 +24,11 @@ class SQLiteOneTimeGrantLedger:
     def __init__(self, path: str | Path) -> None:
         self.path = str(path)
         with self._connect() as connection:
+            version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            if version not in {0, _SCHEMA_VERSION}:
+                raise WorkloadLedgerError(
+                    f"Unsupported one-time grant ledger schema version {version}."
+                )
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS workload_grant_consumption (
@@ -34,6 +40,7 @@ class SQLiteOneTimeGrantLedger:
                 ) WITHOUT ROWID
                 """
             )
+            connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
             connection.commit()
 
     def _connect(self) -> sqlite3.Connection:
