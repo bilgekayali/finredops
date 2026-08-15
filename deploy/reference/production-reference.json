@@ -1,0 +1,65 @@
+{
+  "schema_version": "finredops.production-reference-deployment.v1",
+  "release_version": "1.0.0",
+  "profile_id": "finredops-v1-regulated-reference",
+  "production_active_testing_allowed": false,
+  "autonomous_target_discovery_allowed": false,
+  "components": {
+    "external_identity": {
+      "protocol": "oidc_jwks",
+      "pinned_provider_configuration": true,
+      "operator_supplied_jwks": true,
+      "network_discovery": false
+    },
+    "tenant_authorization": {
+      "exact_subject_grants": true,
+      "provider_config_digest_pinned": true,
+      "capability_allowlist": ["store_read", "store_write", "audit_verify", "crypto_use"]
+    },
+    "postgresql_rls": {
+      "major_version": 17,
+      "force_rls": true,
+      "session_user_tenant_source": true,
+      "runtime_superuser_allowed": false,
+      "runtime_bypassrls_allowed": false
+    },
+    "institution_cryptography": {
+      "provider": "aws_kms",
+      "required_key_purposes": ["data_encryption", "audit_signing", "workload_identity"],
+      "key_references_supplied_out_of_band": true
+    },
+    "configuration_change_control": {
+      "independent_governors": 2,
+      "required_roles": ["configuration_governor", "security_governor"],
+      "distinct_key_material_required": true
+    },
+    "external_audit_anchor": {
+      "transport": "pinned_https",
+      "separate_trust_root": true,
+      "independent_administrative_domain_required": true
+    },
+    "evidence_vault": {
+      "envelope_encryption": true,
+      "append_only_custody": true,
+      "forward_only_retention": true,
+      "legal_hold": true,
+      "physical_worm_storage_external": true
+    },
+    "isolated_worker": {
+      "non_production_only": true,
+      "single_use_test_account": true,
+      "strict_egress_binding": true,
+      "signed_receipt_required": true,
+      "emergency_stop_verified": true
+    }
+  },
+  "deployment_owner_responsibilities": [
+    "cloud IAM and KMS key policy",
+    "OIDC provider lifecycle and user governance",
+    "database credential and network controls",
+    "worker runtime isolation and egress enforcement",
+    "anchor service immutability and availability",
+    "evidence retention periods, legal holds and final disposition",
+    "legal, regulatory and accessibility applicability"
+  ]
+}
