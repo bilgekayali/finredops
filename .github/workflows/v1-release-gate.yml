@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install package
@@ -79,7 +79,7 @@ jobs:
       FINREDOPS_TEST_POSTGRES_RUNTIME_BASE: host=127.0.0.1 port=5432 dbname=finredops
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install PostgreSQL integration dependencies
