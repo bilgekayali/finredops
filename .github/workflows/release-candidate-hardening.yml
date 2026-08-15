@@ -17,6 +17,7 @@ on:
       - 'docs/OPERATIONS_RUNBOOK.md'
       - 'docs/THREAT_MODEL.md'
       - 'docs/ROADMAP.md'
+      - 'docs/V1_PREPARATION.md'
       - '.github/workflows/release-candidate-hardening.yml'
       - 'pyproject.toml'
       - 'src/finredops/__init__.py'
@@ -36,6 +37,7 @@ on:
       - 'docs/OPERATIONS_RUNBOOK.md'
       - 'docs/THREAT_MODEL.md'
       - 'docs/ROADMAP.md'
+      - 'docs/V1_PREPARATION.md'
       - '.github/workflows/release-candidate-hardening.yml'
       - 'pyproject.toml'
       - 'src/finredops/__init__.py'
@@ -87,10 +89,12 @@ jobs:
               'docs/RELEASE_SECURITY_REVIEW.md',
               'docs/OPERATIONS_RUNBOOK.md',
               'docs/THREAT_MODEL.md',
+              'docs/V1_PREPARATION.md',
           ]
           for name in required:
               text = Path(name).read_text(encoding='utf-8')
-              if len(text.strip()) < 1000:
+              minimum = 200 if name.endswith('V1_PREPARATION.md') else 1000
+              if len(text.strip()) < minimum:
                   raise SystemExit(f'{name} is unexpectedly incomplete')
           print('release candidate operational documentation present')
           PY
