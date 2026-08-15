@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.dev/schemas/workload-execution-lease.schema.json",
+  "title": "FinRedOps workload execution lease v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","lease_id","institution_id","engagement_id","proposal_id","proposal_digest","workload_identity_digest","test_account_grant_digest","egress_rule_digest","emergency_stop_generation","issued_at","expires_at","request_limit","production_allowed","autonomous_discovery_allowed","arbitrary_command_allowed","lease_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.workload-execution-lease.v1"},
+    "lease_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "proposal_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "proposal_digest": {"$ref": "#/$defs/digest"},
+    "workload_identity_digest": {"$ref": "#/$defs/digest"},
+    "test_account_grant_digest": {"$ref": "#/$defs/digest"},
+    "egress_rule_digest": {"$ref": "#/$defs/digest"},
+    "emergency_stop_generation": {"type": "integer", "minimum": 1},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "request_limit": {"const": 1},
+    "production_allowed": {"const": false},
+    "autonomous_discovery_allowed": {"const": false},
+    "arbitrary_command_allowed": {"const": false},
+    "lease_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

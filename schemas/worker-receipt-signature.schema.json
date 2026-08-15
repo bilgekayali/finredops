@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.dev/schemas/worker-receipt-signature.schema.json",
+  "title": "FinRedOps worker receipt signature v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","institution_id","worker_id","execution_id","execution_envelope_digest","workload_identity_digest","lease_digest","signed_at","key_id","provider","key_ref_digest","signing_algorithm","signature","signing_document_digest","artifact_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.worker-receipt-signature.v1"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "worker_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "execution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "execution_envelope_digest": {"$ref": "#/$defs/digest"},
+    "workload_identity_digest": {"$ref": "#/$defs/digest"},
+    "lease_digest": {"$ref": "#/$defs/digest"},
+    "signed_at": {"type": "string", "format": "date-time"},
+    "key_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "provider": {"type": "string", "minLength": 1, "maxLength": 512},
+    "key_ref_digest": {"$ref": "#/$defs/digest"},
+    "signing_algorithm": {"type": "string", "minLength": 1, "maxLength": 512},
+    "signature": {"type": "string", "minLength": 2, "maxLength": 16384, "pattern": "^[A-Za-z0-9_-]+$"},
+    "signing_document_digest": {"$ref": "#/$defs/digest"},
+    "artifact_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

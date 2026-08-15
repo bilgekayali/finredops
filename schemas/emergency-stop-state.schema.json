@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.dev/schemas/emergency-stop-state.schema.json",
+  "title": "FinRedOps emergency stop state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","institution_id","engagement_id","generation","stopped","reason","changed_at","state_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.emergency-stop-state.v1"},
+    "institution_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "engagement_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "generation": {"type": "integer", "minimum": 1},
+    "stopped": {"type": "boolean"},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 512},
+    "changed_at": {"type": "string", "format": "date-time"},
+    "state_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
