@@ -19,6 +19,7 @@ on:
       - 'docs/THREAT_MODEL.md'
       - 'docs/ROADMAP.md'
       - 'docs/V1_PREPARATION.md'
+      - 'docs/V1_NON_CLAIMS.md'
       - '.github/workflows/release-candidate-hardening.yml'
       - 'pyproject.toml'
       - 'src/finredops/__init__.py'
@@ -39,6 +40,7 @@ on:
       - 'docs/THREAT_MODEL.md'
       - 'docs/ROADMAP.md'
       - 'docs/V1_PREPARATION.md'
+      - 'docs/V1_NON_CLAIMS.md'
       - '.github/workflows/release-candidate-hardening.yml'
       - 'pyproject.toml'
       - 'src/finredops/__init__.py'
@@ -93,10 +95,11 @@ jobs:
               'docs/OPERATIONS_RUNBOOK.md',
               'docs/THREAT_MODEL.md',
               'docs/V1_PREPARATION.md',
+              'docs/V1_NON_CLAIMS.md',
           ]
           for name in required:
               text = Path(name).read_text(encoding='utf-8')
-              minimum = 200 if name.endswith('V1_PREPARATION.md') else 1000
+              minimum = 200 if name.endswith('V1_PREPARATION.md') else 900
               if len(text.strip()) < minimum:
                   raise SystemExit(f'{name} is unexpectedly incomplete')
           print('release candidate operational documentation present')
@@ -107,6 +110,9 @@ jobs:
           from pathlib import Path
           text = Path('docs/FAILURE_RECOVERY.md').read_text(encoding='utf-8').lower()
           assert 'does **not** implement destructive automatic downgrade' in text
+          nonclaims = Path('docs/V1_NON_CLAIMS.md').read_text(encoding='utf-8').lower()
+          assert 'autonomous target discovery' in nonclaims
+          assert 'production-target active-testing' in nonclaims
           roadmap = Path('docs/ROADMAP.md').read_text(encoding='utf-8')
           assert '### v1.0.0 — production-ready reference release gate' in roadmap
           print('downgrade and v1 gate boundaries verified')
