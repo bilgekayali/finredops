@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finredops.example/schemas/v1-release-contract.schema.json",
+  "title": "FinRedOps v1 Release Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release_version",
+    "supported_upgrade_from",
+    "stable_cli_commands",
+    "stable_schema_versions",
+    "stable_schema_files",
+    "python_import_surface_stable",
+    "cli_backward_compatibility_required_within_v1",
+    "schema_discriminator_backward_compatibility_required_within_v1",
+    "breaking_change_requires_major_version",
+    "automatic_destructive_downgrade_supported",
+    "reference_deployment_profile_required",
+    "release_provenance_required",
+    "independent_external_human_security_audit_claimed",
+    "compliance_certification_claimed",
+    "autonomous_penetration_testing_claimed"
+  ],
+  "properties": {
+    "schema_version": {"const": "finredops.public-contract.v1"},
+    "release_version": {"const": "1.0.0"},
+    "supported_upgrade_from": {
+      "type": "array",
+      "const": ["0.9.3"]
+    },
+    "stable_cli_commands": {
+      "type": "array",
+      "minItems": 12,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 100}
+    },
+    "stable_schema_versions": {
+      "type": "object",
+      "minProperties": 6,
+      "additionalProperties": {"type": "string", "pattern": "^finredops\\.[A-Za-z0-9_.-]+\\.v1$"}
+    },
+    "stable_schema_files": {
+      "type": "object",
+      "minProperties": 6,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "schema_version"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^schemas/[A-Za-z0-9_.-]+\\.schema\\.json$"},
+          "schema_version": {"type": "string", "pattern": "^finredops\\.[A-Za-z0-9_.-]+\\.v1$"}
+        }
+      }
+    },
+    "python_import_surface_stable": {"const": false},
+    "cli_backward_compatibility_required_within_v1": {"const": true},
+    "schema_discriminator_backward_compatibility_required_within_v1": {"const": true},
+    "breaking_change_requires_major_version": {"const": true},
+    "automatic_destructive_downgrade_supported": {"const": false},
+    "reference_deployment_profile_required": {"const": true},
+    "release_provenance_required": {"const": true},
+    "independent_external_human_security_audit_claimed": {"const": false},
+    "compliance_certification_claimed": {"const": false},
+    "autonomous_penetration_testing_claimed": {"const": false}
+  }
+}
