@@ -8,7 +8,7 @@ FinRedOps 1.0.0 does **not** claim to be:
 - a generic shell/command execution platform;
 - authorization to test any target;
 - a production-target active-testing engine;
-- an autonomous discovery, crawling, port-scanning, credential-attack or payload-generation system;
+- an autonomous target discovery, crawling, port-scanning, credential-attack or payload-generation system;
 - a legal opinion, regulatory acceptance decision, independent audit or compliance certificate;
 - proof that a deployment's OIDC, cloud IAM, KMS/HSM, PostgreSQL, firewall, secret store or backup configuration is correct;
 - a creator/custodian of institution private keys or KMS credentials;
