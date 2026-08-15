@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finredops"
-version = "0.9.3"
+version = "1.0.0"
 description = "Governance-first AI-assisted security testing orchestration for regulated financial institutions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,6 +26,7 @@ keywords = [
   "multi-tenant",
   "penetration-testing",
   "postgresql",
+  "production-reference",
   "regtech",
   "release-hardening",
   "retention",
@@ -38,7 +39,7 @@ keywords = [
   "workload-identity",
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Financial and Insurance Industry",
   "Intended Audience :: Information Technology",
   "License :: OSI Approved :: Apache Software License",
