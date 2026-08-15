@@ -265,12 +265,12 @@ implemented, tested, documented and reviewed.
 
 ### v0.9.3 — release-candidate hardening
 
-- [ ] upgrade/downgrade and migration tests for persisted schemas and security artifacts;
-- [ ] failure-recovery and partial-transaction runbooks;
-- [ ] backup/restore boundary review for encrypted tenant persistence and evidence lifecycle;
-- [ ] updated threat model covering the complete production reference architecture;
-- [ ] dependency, packaging and release-provenance security review;
-- [ ] operator deployment, key-rotation, incident and disaster-recovery runbooks.
+- [x] upgrade/downgrade and migration tests for persisted schemas and security artifacts;
+- [x] failure-recovery and partial-transaction runbooks;
+- [x] backup/restore boundary review for encrypted tenant persistence and evidence lifecycle;
+- [x] updated threat model covering the complete production reference architecture;
+- [x] dependency, packaging and release-provenance security review;
+- [x] operator deployment, key-rotation, incident and disaster-recovery runbooks.
 
 ### v1.0.0 — production-ready reference release gate
 

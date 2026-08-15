@@ -1,0 +1,111 @@
+# v0.9.3 final candidate exact-head release gate
+name: Release Candidate Hardening
+
+on:
+  push:
+    paths:
+      - 'README.md'
+      - 'src/finredops/release_compatibility.py'
+      - 'src/finredops/store.py'
+      - 'src/finredops/vault_store.py'
+      - 'src/finredops/reference_anchor.py'
+      - 'src/finredops/workload_ledger.py'
+      - 'tests/test_release_candidate_hardening.py'
+      - 'tests/test_security_artifact_compatibility.py'
+      - 'docs/FAILURE_RECOVERY.md'
+      - 'docs/BACKUP_RESTORE.md'
+      - 'docs/RELEASE_SECURITY_REVIEW.md'
+      - 'docs/OPERATIONS_RUNBOOK.md'
+      - 'docs/THREAT_MODEL.md'
+      - 'docs/ROADMAP.md'
+      - 'docs/V1_PREPARATION.md'
+      - '.github/workflows/release-candidate-hardening.yml'
+      - 'pyproject.toml'
+      - 'src/finredops/__init__.py'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'src/finredops/release_compatibility.py'
+      - 'src/finredops/store.py'
+      - 'src/finredops/vault_store.py'
+      - 'src/finredops/reference_anchor.py'
+      - 'src/finredops/workload_ledger.py'
+      - 'tests/test_release_candidate_hardening.py'
+      - 'tests/test_security_artifact_compatibility.py'
+      - 'docs/FAILURE_RECOVERY.md'
+      - 'docs/BACKUP_RESTORE.md'
+      - 'docs/RELEASE_SECURITY_REVIEW.md'
+      - 'docs/OPERATIONS_RUNBOOK.md'
+      - 'docs/THREAT_MODEL.md'
+      - 'docs/ROADMAP.md'
+      - 'docs/V1_PREPARATION.md'
+      - '.github/workflows/release-candidate-hardening.yml'
+      - 'pyproject.toml'
+      - 'src/finredops/__init__.py'
+
+permissions:
+  contents: read
+
+jobs:
+  release-candidate-hardening:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Run compatibility and recovery regression tests
+        run: |
+          python -m unittest tests.test_release_candidate_hardening -v
+          python -m unittest tests.test_security_artifact_compatibility -v
+      - name: Verify release compatibility contract
+        run: |
+          python - <<'PY'
+          import finredops
+          from finredops.release_compatibility import release_compatibility_manifest
+          manifest = release_compatibility_manifest()
+          assert finredops.__version__ == '0.9.3'
+          assert manifest['release_version'] == '0.9.3'
+          assert manifest['automatic_downgrade_supported'] is False
+          assert manifest['unknown_future_schema_open_supported'] is False
+          assert manifest['backup_before_migration_required'] is True
+          names = {item['name'] for item in manifest['persistence']}
+          assert names == {
+              'sqlite-governance-store',
+              'sqlite-evidence-vault',
+              'reference-audit-anchor',
+              'one-time-grant-ledger',
+          }
+          print('release compatibility contract verified')
+          PY
+      - name: Require RC operational documents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          required = [
+              'docs/FAILURE_RECOVERY.md',
+              'docs/BACKUP_RESTORE.md',
+              'docs/RELEASE_SECURITY_REVIEW.md',
+              'docs/OPERATIONS_RUNBOOK.md',
+              'docs/THREAT_MODEL.md',
+              'docs/V1_PREPARATION.md',
+          ]
+          for name in required:
+              text = Path(name).read_text(encoding='utf-8')
+              minimum = 200 if name.endswith('V1_PREPARATION.md') else 1000
+              if len(text.strip()) < minimum:
+                  raise SystemExit(f'{name} is unexpectedly incomplete')
+          print('release candidate operational documentation present')
+          PY
+      - name: Enforce no automatic downgrade claim
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('docs/FAILURE_RECOVERY.md').read_text(encoding='utf-8').lower()
+          assert 'does **not** implement destructive automatic downgrade' in text
+          roadmap = Path('docs/ROADMAP.md').read_text(encoding='utf-8')
+          assert '### v1.0.0 — production-ready reference release gate' in roadmap
+          print('downgrade and v1 gate boundaries verified')
+          PY

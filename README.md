@@ -13,15 +13,16 @@ run. Models may propose typed actions; deterministic policy enforces scope,
 time, separation of duties, immutable approvals, and a closed action catalog.
 
 > [!IMPORTANT]
-> **Version 0.9.2** keeps simulation as the safe default and preserves the
+> **Version 0.9.3** keeps simulation as the safe default and preserves the
 > bounded active-validation, signed-decision, tenant, database-RLS,
 > configuration-change, external-audit-anchor, encrypted-evidence-vault,
-> assurance-evidence and report-issuance boundaries. It adds a provider-neutral
-> isolated-workload boundary with short-lived institution-owned workload
-> identity, single-use test-account grants, exact egress-policy binding,
-> emergency-stop state verification and signed worker-result receipts. The
-> control plane does not create a generic shell/network executor and still
-> refuses production active testing, autonomous discovery and arbitrary commands.
+> assurance-evidence, isolated-workload and report-issuance boundaries. It adds
+> release-candidate compatibility/recovery controls: explicit persisted-schema
+> compatibility, future-schema fail-closed guards, migration/rollback tests,
+> backup/restore validation, a complete architecture threat model and deployment,
+> key-rotation, incident and disaster-recovery runbooks. It does **not** perform
+> destructive automatic downgrade and does not claim that independent security,
+> legal or accessibility review has been completed.
 
 FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
@@ -143,7 +144,7 @@ coverage model, version pins and explicit non-claims.
 
 ## Core control model
 
-| Boundary | v0.9.2 behavior |
+| Boundary | v0.9.3 behavior |
 |---|---|
 | AI authority | May propose typed JSON only; cannot authorize or execute |
 | Target scope | Exact hostname, IP, or CIDR allowlist; exclusions win |
@@ -157,6 +158,9 @@ coverage model, version pins and explicit non-claims.
 | Workload egress | Exact action/target/port/path plus bounded peer CIDRs and one-request limit; signed result must report an allowed peer |
 | Emergency stop | State checked before and after provider invocation; changed/active state rejects execution or result promotion, but does not claim rollback of a request already sent |
 | Worker result | Execution envelope is bound to identity, lease, grant, egress, stop state and receipt, then verified under the institution workload key |
+| Persistence compatibility | Governance SQLite schema v3 with tested v1/v2 upgrade; vault, reference anchor and one-time-grant ledger schema v1; future schema versions fail closed |
+| Downgrade/rollback | No destructive automatic downgrade; rollback uses a verified pre-migration backup or prior compatible environment |
+| Recovery testing | Injected transaction-failure tests verify governance/vault rollback; closed-file backup/reopen tests cover governance and encrypted vault state |
 | Evidence handling | Deterministic minimization and redaction of likely sensitive identifiers |
 | Evidence vault | Optional institution-scoped raw-evidence boundary with KMS/HSM envelope encryption, append-only custody, forward-only retention, history-derived legal holds and recovery bundles; reference SQLite is not WORM |
 | Machine findings | Bounded SARIF 2.1.0 intake with stable fingerprints and mandatory review |
@@ -703,7 +707,7 @@ CI import-boundary check.
 A receipt binds a global sequence, the previous receipt digest, `anchor_id`,
 institution, engagement, commitment digest, anchor timestamp and anchor signing
 key. It is Ed25519-signed under a trust root separate from institution KMS/HSM,
-reviewer, approval and configuration-change trust. `verify_audit_anchor-chain`
+reviewer, approval and configuration-change trust. `verify-audit-anchor-chain`
 rejects reordered history, broken previous-digest continuity, duplicate
 commitments, backwards time and invalid/disabled/out-of-window signing keys.
 Single-receipt verification can additionally pin an expected sequence and prior
@@ -824,6 +828,32 @@ responsibilities. See **[Isolated workload execution](docs/WORKLOAD_EXECUTION.md
 for the trust flow, provider contract, replay behavior, egress semantics and
 explicit non-claims.
 
+## v0.9.3 release-candidate hardening
+
+v0.9.3 makes persistence and operational recovery expectations explicit before
+the v1 gate. `release_compatibility_manifest()` records the current persistence
+schemas and security-artifact schema identifiers, states that automatic downgrade
+is unsupported, and requires a pre-migration backup/previous compatible
+environment for rollback.
+
+Regression coverage exercises governance schema v2→v3 migration, future-schema
+rejection across governance/vault/anchor/grant-ledger databases, unknown future
+security-artifact rejection, injected transaction rollback and closed-file
+backup/reopen of governance plus encrypted vault state. The reference anchor and
+one-time-grant ledger now also persist explicit SQLite schema version 1 and reject
+unknown versions.
+
+The release candidate adds dedicated failure-recovery, backup/restore,
+release-security and operations runbooks and updates the threat model to the full
+OIDC/tenant/RLS/KMS/change-control/anchor/vault/assurance/isolated-worker
+architecture. These are maintainer/reference controls; independent security,
+legal and accessibility review remain open v1 gates.
+
+See **[Failure recovery](docs/FAILURE_RECOVERY.md)**,
+**[Backup and restore](docs/BACKUP_RESTORE.md)**,
+**[Release security review](docs/RELEASE_SECURITY_REVIEW.md)** and
+**[Operations runbook](docs/OPERATIONS_RUNBOOK.md)**.
+
 ## Reproduce the reviewed-report demo from an installed wheel
 
 The synthetic engagement, plan, and SARIF input ship as package data. A source
@@ -862,7 +892,7 @@ that provenance has been verified.
 Verify the build origin separately with GitHub CLI artifact attestations:
 
 ```bash
-gh attestation verify finredops-0.9.2-py3-none-any.whl \
+gh attestation verify finredops-0.9.3-py3-none-any.whl \
   --repo bilgekayali/finredops
 ```
 
@@ -902,7 +932,7 @@ src/finredops/
   validation.py           optional bounded active validation
   workload_identity.py    KMS/HSM-backed short-lived external worker identity and signed receipts
   workload_execution.py   exact non-production execution lease, egress, one-time grant and stop verification
-  workload_ledger.py      atomic institution-scoped one-time grant consumption ledger
+  workload_ledger.py      versioned atomic institution-scoped one-time grant consumption ledger
   intake.py               bounded SARIF parser and canonical candidates
   supply_chain.py         bounded CycloneDX 1.7 assurance intake
   cvss40.py               CVSS 4.0 technical severity validation
@@ -932,7 +962,7 @@ src/finredops/
   anchor_source.py        KMS/HSM-verified audit state to exact anchor commitment
   anchor_verify.py        offline external receipt and receipt-chain verification
   anchor_http.py          pinned-HTTPS external anchor client adapter
-  reference_anchor.py     service-side signed append-only reference authority
+  reference_anchor.py     versioned service-side signed append-only reference authority
   anchor_cli.py           offline anchor artifact verification commands
   hardening_cli.py        v0.8 tenant/key/anchor-boundary operator commands
   evidence_vault.py       institution-bound encrypted raw-evidence lifecycle service
@@ -941,6 +971,7 @@ src/finredops/
   vault_history.py        deterministic hold/retention/custody verification
   vault_bundle.py         encrypted recovery bundle and parser
   vault_store.py          append-only institution-scoped SQLite reference vault
+  release_compatibility.py release/persistence/security-artifact compatibility manifest
   promotion.py            explicit reviewed-finding to draft-report boundary
   operator_cli.py         reviewed-report and release-integrity commands
   entrypoint.py           top-level operator/trust/approval/OIDC/change/tenant/PostgreSQL/hardening router
@@ -960,8 +991,8 @@ src/finredops/
   api.py                  loopback-first read-only API
   dashboard.py            self-contained operations interface
 schemas/                  versioned reviewer, approval, OIDC, change-control, tenant, PostgreSQL, institution, envelope, anchor, vault, assurance and workload contracts
-docs/                     architecture, safety, assurance, operator, release, trust, tenant, database, anchor, vault and workload documentation
-tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant, PostgreSQL, KMS/envelope, anchor, vault, assurance, workload, packaging and end-to-end tests
+docs/                     architecture, safety, assurance, operator, release, trust, tenant, database, anchor, vault, workload and recovery documentation
+tests/                    policy, integrity, trust, approvals, change control, OIDC, tenant, PostgreSQL, KMS/envelope, anchor, vault, assurance, workload, recovery, packaging and end-to-end tests
 ```
 
 ## Trust claims—and limits
@@ -1048,6 +1079,13 @@ a network request already sent before an emergency-stop change is observed.
 Worker runtime hardening, network enforcement, workload-key policy, credential
 resolution and emergency termination remain deployment responsibilities.
 
+v0.9.3 tests and documents migration/recovery behavior and rejects unknown future
+persistence/security-artifact schemas in the covered boundaries. A successful
+reference restore test does not establish production RPO/RTO, backup immutability,
+cloud snapshot correctness or disaster-recovery readiness. The release security
+review is maintainer-authored, not independent. Independent security, legal and
+accessibility review/disposition remains an explicit v1 gate.
+
 ## Reference baseline
 
 The design and analysis model are informed by, but do not claim conformance with:
@@ -1087,6 +1125,10 @@ Key documentation:
 - [Regulatory and security assurance baseline](docs/ASSURANCE_BASELINE.md)
 - [Assurance completeness](docs/ASSURANCE_COMPLETENESS.md)
 - [Isolated workload execution](docs/WORKLOAD_EXECUTION.md)
+- [Failure recovery](docs/FAILURE_RECOVERY.md)
+- [Backup and restore](docs/BACKUP_RESTORE.md)
+- [Release security review](docs/RELEASE_SECURITY_REVIEW.md)
+- [Operations runbook](docs/OPERATIONS_RUNBOOK.md)
 - [Reviewer trust, identity binding and lifecycle](docs/TRUST_IDENTITY.md)
 - [Signed business and report approvals](docs/SIGNED_APPROVALS.md)
 - [OIDC / JWKS identity verification](docs/OIDC_IDENTITY.md)
