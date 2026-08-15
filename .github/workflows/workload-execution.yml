@@ -68,17 +68,18 @@ jobs:
                           raise SystemExit(f'{path}: forbidden dynamic execution {node.func.id}')
           print('isolated workload control-plane boundary verified')
           PY
-      - name: Enforce v0.9.2 invariants
+      - name: Enforce workload invariants
         run: |
           python - <<'PY'
           import pathlib
           import tomllib
           data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
-          assert data['project']['version'] == '0.9.2'
+          version = tuple(int(part) for part in data['project']['version'].split('.'))
+          assert version >= (0, 9, 2)
           source = pathlib.Path('src/finredops/workload_execution.py').read_text()
           assert 'production_allowed: bool = False' in source
           assert 'autonomous_discovery_allowed: bool = False' in source
           assert 'arbitrary_command_allowed: bool = False' in source
           assert 'request_limit: int = 1' in source
-          print('v0.9.2 invariant pins verified')
+          print('isolated workload invariant pins verified')
           PY
