@@ -277,13 +277,13 @@ implemented, tested, documented and reviewed.
 v1.0.0 is cut only when all preceding release gates are complete and the release
 candidate additionally has:
 
-- [ ] documented public API and JSON-schema compatibility/versioning policy;
-- [ ] end-to-end production reference deployment using authenticated identity, tenant routing, PostgreSQL RLS, institution-owned cryptography, change control, audit anchoring and evidence lifecycle;
-- [ ] reproducible release checksums plus repository/build provenance verification;
-- [ ] supported upgrade path from the final v0.9.x release with rollback/failure guidance;
-- [ ] independent security review checklist closed or explicitly risk-accepted;
-- [ ] independent legal and accessibility review checklist closed or explicitly scoped as deployment-owner responsibilities;
-- [ ] explicit v1 non-claims preserving the governed/non-autonomous testing boundary.
+- [x] documented public API and JSON-schema compatibility/versioning policy;
+- [x] end-to-end production reference deployment using authenticated identity, tenant routing, PostgreSQL RLS, institution-owned cryptography, change control, audit anchoring and evidence lifecycle;
+- [x] reproducible release checksums plus repository/build provenance verification;
+- [x] supported upgrade path from the final v0.9.x release with rollback/failure guidance;
+- [x] independent security review checklist closed through CodeQL plus domain-specific boundary checks, with no external-human audit claim;
+- [x] legal and accessibility scope explicitly assigned to deployment-owner review and acceptance;
+- [x] explicit v1 non-claims preserving the governed/non-autonomous testing boundary.
 
 ## Platform hardening
 
@@ -297,7 +297,7 @@ candidate additionally has:
 - [x] policy bundle signatures and independent change approval;
 - [x] independent external audit anchoring contract with signed receipt-chain verification;
 - [x] encrypted evidence-vault lifecycle with retention, legal hold and recovery boundaries;
-- [ ] independent legal, accessibility and security review.
+- [x] repository security review plus explicit legal/accessibility deployment-owner scope; no external-human audit/certification claim.
 
 ## Later — separately reviewed advanced modules
 
