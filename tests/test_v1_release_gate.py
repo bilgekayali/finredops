@@ -11,7 +11,11 @@ from finredops.reference_deployment import (
     ReferenceDeploymentError,
     validate_reference_deployment,
 )
-from finredops.v1_release import STABLE_CLI_COMMANDS, v1_release_manifest
+from finredops.v1_release import (
+    STABLE_CLI_COMMANDS,
+    STABLE_SCHEMA_FILES,
+    v1_release_manifest,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,6 +32,14 @@ class V1ReleaseGateTests(unittest.TestCase):
         self.assertFalse(manifest["independent_external_human_security_audit_claimed"])
         self.assertGreaterEqual(len(STABLE_CLI_COMMANDS), 12)
         self.assertEqual(len(STABLE_CLI_COMMANDS), len(set(STABLE_CLI_COMMANDS)))
+
+    def test_stable_schema_files_keep_exact_v1_discriminators(self) -> None:
+        for name, (relative_path, expected_version) in STABLE_SCHEMA_FILES.items():
+            document = json.loads((ROOT / relative_path).read_text(encoding="utf-8"))
+            properties = document.get("properties", {})
+            schema_version = properties.get("schema_version", {})
+            self.assertEqual(schema_version.get("const"), expected_version, name)
+            self.assertFalse(document.get("additionalProperties", True), name)
 
     def test_production_reference_profile_validates_and_is_secret_free(self) -> None:
         path = ROOT / "deploy/reference/production-reference.json"
@@ -89,6 +101,8 @@ class V1ReleaseGateTests(unittest.TestCase):
         self.assertIn("actions/attest@v4", release)
         self.assertIn("CHECKSUMS.sha256", release)
         self.assertIn("verify-release-checksums", release)
+        self.assertIn("v1-release-contract.json", release)
+        self.assertIn("production-reference.json", release)
         codeql = (ROOT / ".github/workflows/codeql.yml").read_text(encoding="utf-8")
         self.assertIn("github/codeql-action/init@v4", codeql)
         self.assertIn("github/codeql-action/analyze@v4", codeql)
