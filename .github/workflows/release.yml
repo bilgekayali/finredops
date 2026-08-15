@@ -53,32 +53,65 @@ jobs:
           python -m pip install build
           python -m build
 
-      - name: Smoke-test installed wheel with declared runtime dependencies
+      - name: Smoke-test installed wheel and stable v1 CLI contract
         shell: bash
         run: |
           set -euo pipefail
           python -m venv /tmp/finredops-release
           /tmp/finredops-release/bin/python -m pip install dist/*.whl
-          /tmp/finredops-release/bin/finredops --help | grep -q "verify-review-trust"
-          /tmp/finredops-release/bin/finredops --help | grep -q "approve-trusted-report"
-          /tmp/finredops-release/bin/finredops --help | grep -q "verify-oidc-id-token"
-          /tmp/finredops-release/bin/finredops --help | grep -q "verify-oidc-workflow-bindings"
-          /tmp/finredops-release/bin/finredops --help | grep -q "resolve-change-control"
-          /tmp/finredops-release/bin/finredops --help | grep -q "verify-change-control"
-          /tmp/finredops-release/bin/finredops --help | grep -q "postgres-rls-install-sql"
-          /tmp/finredops-release/bin/finredops --help | grep -q "verify-postgres-runtime"
+          /tmp/finredops-release/bin/python - <<'PY'
+          import finredops
+          from finredops.v1_release import v1_release_manifest
+          manifest = v1_release_manifest()
+          assert finredops.__version__ == manifest['release_version']
+          assert manifest['release_version'] == '1.0.0'
+          PY
+          HELP="$(/tmp/finredops-release/bin/finredops --help)"
+          while IFS= read -r command; do
+            grep -q -- "${command}" <<<"${HELP}" || {
+              echo "Stable v1 CLI command missing from installed wheel: ${command}" >&2
+              exit 1
+            }
+          done < <(/tmp/finredops-release/bin/python - <<'PY'
+          from finredops.v1_release import STABLE_CLI_COMMANDS
+          print('\n'.join(STABLE_CLI_COMMANDS))
+          PY
+          )
           /tmp/finredops-release/bin/finredops export-examples --output-dir /tmp/finredops-release-examples
           /tmp/finredops-release/bin/finredops validate-engagement /tmp/finredops-release-examples/synthetic_engagement.json
           /tmp/finredops-release/bin/finredops validate-plan /tmp/finredops-release-examples/synthetic_ai_plan.json --engagement /tmp/finredops-release-examples/synthetic_engagement.json
           /tmp/finredops-release/bin/finredops demo-reviewed-report --output-dir /tmp/finredops-release-reviewed
           /tmp/finredops-release/bin/finredops validate-report /tmp/finredops-release-reviewed/regulatory-report.json
 
-      - name: Generate SHA-256 checksum manifest
+      - name: Generate v1 release and deployment evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/finredops-release/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+          from finredops.reference_deployment import validate_reference_deployment
+          from finredops.v1_release import v1_release_manifest
+
+          dist = Path('dist')
+          dist.joinpath('v1-release-contract.json').write_text(
+              json.dumps(v1_release_manifest(), indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          profile = json.loads(Path('deploy/reference/production-reference.json').read_text(encoding='utf-8'))
+          validated = validate_reference_deployment(profile)
+          dist.joinpath('production-reference.json').write_text(
+              json.dumps(validated, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Generate and verify SHA-256 checksum manifest
         shell: bash
         run: |
           set -euo pipefail
           cd dist
-          sha256sum *.whl *.tar.gz > CHECKSUMS.sha256
+          sha256sum *.whl *.tar.gz *.json > CHECKSUMS.sha256
           cd ..
           /tmp/finredops-release/bin/finredops verify-release-checksums --manifest dist/CHECKSUMS.sha256 --directory dist
 
@@ -95,6 +128,7 @@ jobs:
           path: |
             dist/*.whl
             dist/*.tar.gz
+            dist/*.json
             dist/CHECKSUMS.sha256
 
       - name: Publish GitHub Release for version tag
