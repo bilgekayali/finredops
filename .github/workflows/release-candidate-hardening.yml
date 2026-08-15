@@ -1,4 +1,4 @@
-# v0.9.3 exact-head release gate
+# v0.9.3 final candidate exact-head release gate
 name: Release Candidate Hardening
 
 on:
