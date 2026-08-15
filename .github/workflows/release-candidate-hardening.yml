@@ -3,6 +3,7 @@ name: Release Candidate Hardening
 on:
   push:
     paths:
+      - 'README.md'
       - 'src/finredops/release_compatibility.py'
       - 'src/finredops/store.py'
       - 'src/finredops/vault_store.py'
@@ -21,6 +22,7 @@ on:
       - 'src/finredops/__init__.py'
   pull_request:
     paths:
+      - 'README.md'
       - 'src/finredops/release_compatibility.py'
       - 'src/finredops/store.py'
       - 'src/finredops/vault_store.py'
