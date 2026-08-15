@@ -14,7 +14,7 @@ jobs:
   v1-contract:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -78,7 +78,7 @@ jobs:
       FINREDOPS_TEST_POSTGRES_ADMIN_DSN: postgresql://postgres:postgres@127.0.0.1:5432/finredops
       FINREDOPS_TEST_POSTGRES_RUNTIME_BASE: host=127.0.0.1 port=5432 dbname=finredops
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
