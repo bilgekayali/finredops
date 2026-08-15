@@ -29,15 +29,37 @@ STABLE_CLI_COMMANDS = (
     "verify-release-checksums",
 )
 
-# Versioned JSON artifacts that are explicitly part of the v1 compatibility
-# contract. Their schema_version discriminator is the compatibility boundary.
+# Versioned JSON artifacts explicitly covered by the v1 compatibility contract.
+# The schema_version discriminator is the semantic compatibility boundary and the
+# filename is pinned so CI can verify that the shipped schema still exposes it.
+STABLE_SCHEMA_FILES = {
+    "tenant_authorization": (
+        "schemas/tenant-authorization.schema.json",
+        "finredops.tenant-authorization.v1",
+    ),
+    "institution_context": (
+        "schemas/institution-security-context.schema.json",
+        "finredops.institution-security-context.v1",
+    ),
+    "approved_change_package": (
+        "schemas/approved-change-package.schema.json",
+        "finredops.approved-change-package.v1",
+    ),
+    "audit_anchor_receipt": (
+        "schemas/audit-anchor-receipt.schema.json",
+        "finredops.audit-anchor-receipt.v1",
+    ),
+    "evidence_vault_record": (
+        "schemas/evidence-vault-record.schema.json",
+        "finredops.evidence-vault-record.v1",
+    ),
+    "workload_execution_lease": (
+        "schemas/workload-execution-lease.schema.json",
+        "finredops.workload-execution-lease.v1",
+    ),
+}
 STABLE_SCHEMA_VERSIONS = {
-    "tenant_authorization": "finredops.tenant-authorization.v1",
-    "institution_context": "finredops.institution-security-context.v1",
-    "approved_change_package": "finredops.approved-change-package.v1",
-    "audit_anchor_receipt": "finredops.audit-anchor-receipt.v1",
-    "evidence_vault_record": "finredops.evidence-vault-record.v1",
-    "workload_execution_lease": "finredops.workload-execution-lease.v1",
+    name: schema_version for name, (_, schema_version) in STABLE_SCHEMA_FILES.items()
 }
 
 
@@ -50,6 +72,10 @@ def v1_release_manifest() -> Mapping[str, Any]:
         "supported_upgrade_from": list(SUPPORTED_UPGRADE_FROM),
         "stable_cli_commands": list(STABLE_CLI_COMMANDS),
         "stable_schema_versions": dict(sorted(STABLE_SCHEMA_VERSIONS.items())),
+        "stable_schema_files": {
+            name: {"path": path, "schema_version": version}
+            for name, (path, version) in sorted(STABLE_SCHEMA_FILES.items())
+        },
         "python_import_surface_stable": False,
         "cli_backward_compatibility_required_within_v1": True,
         "schema_discriminator_backward_compatibility_required_within_v1": True,
