@@ -56,14 +56,14 @@ Roadmap items remain subject to the safety boundary and institutional review.
 - [x] secret/identifier minimization and source-snippet exclusion;
 - [x] non-final machine severity/confidence and mandatory human-review state;
 - [x] strict JSON contract, digest verification, CLI, synthetic example and tests;
-- [ ] CycloneDX 1.7 SBOM and vulnerability intake;
+- [x] CycloneDX 1.7 SBOM and vulnerability intake;
 - [x] digest-bound qualified-tester disposition and rationale workflow;
 - [x] role-separated, evidence-linked and time-bounded business risk acceptance;
 - [x] deterministic queue summary with active/expired acceptance state;
 - [x] cryptographically signed reviewer identity assertions with provider-neutral trust bundles;
 - [x] engagement/intake binding plus review supersession and revocation;
-- [ ] CVSS 4.0 vector validation with separate financial business impact;
-- [ ] versioned OWASP ASVS 5.0.0 requirement coverage;
+- [x] CVSS 4.0 vector validation with separate financial business impact;
+- [x] versioned OWASP ASVS 5.0.0 requirement coverage;
 - [x] controlled promotion from confirmed candidates into draft reports;
 
 ## v0.6 — end-to-end operator workflow
@@ -249,11 +249,11 @@ implemented, tested, documented and reviewed.
 
 ### v0.9.1 — assurance completeness
 
-- [ ] CycloneDX 1.7 SBOM and vulnerability intake;
-- [ ] CVSS 4.0 vector parsing/validation separated from financial business impact;
-- [ ] versioned OWASP ASVS 5.0.0 requirement coverage;
-- [ ] deterministic linkage of these evidence sources into qualified human review and audit dossiers;
-- [ ] keep regulatory applicability human-confirmed and non-certifying.
+- [x] CycloneDX 1.7 SBOM and vulnerability intake;
+- [x] CVSS 4.0 vector parsing/validation separated from financial business impact;
+- [x] versioned OWASP ASVS 5.0.0 requirement coverage;
+- [x] deterministic linkage of these evidence sources into qualified human review and audit dossiers;
+- [x] keep regulatory applicability human-confirmed and non-certifying.
 
 ### v0.9.2 — isolated workload execution
 

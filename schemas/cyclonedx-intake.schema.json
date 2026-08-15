@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinRedOps CycloneDX 1.7 Intake v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "batch_id", "source_content_sha256", "source_size_bytes", "bom_serial_number", "bom_version", "components", "findings", "source_format", "source_version", "human_review_required", "raw_source_embedded", "regulatory_applicability_inferred", "batch_digest"],
+  "properties": {
+    "schema_version": {"const": "finredops.cyclonedx-intake.v1"},
+    "batch_id": {"type": "string", "pattern": "^FRX-CDX-[A-F0-9]{24}$"},
+    "source_content_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source_size_bytes": {"type": "integer", "minimum": 0, "maximum": 20000000},
+    "bom_serial_number": {"type": "string", "maxLength": 256},
+    "bom_version": {"type": "integer", "minimum": 1},
+    "components": {"type": "array", "maxItems": 50000},
+    "findings": {"type": "array", "maxItems": 20000},
+    "source_format": {"const": "cyclonedx-json"},
+    "source_version": {"const": "1.7"},
+    "human_review_required": {"const": true},
+    "raw_source_embedded": {"const": false},
+    "regulatory_applicability_inferred": {"const": false},
+    "batch_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
