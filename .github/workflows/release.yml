@@ -121,7 +121,7 @@ jobs:
           subject-path: "dist/*"
 
       - name: Upload release build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: finredops-release-${{ github.sha }}
           if-no-files-found: error
