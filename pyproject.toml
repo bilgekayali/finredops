@@ -50,7 +50,7 @@ classifiers = [
   "Topic :: Security",
 ]
 dependencies = [
-  "cryptography>=49,<50",
+  "cryptography>=49,<51",
   "cvss>=3.6,<4",
   "PyJWT[crypto]>=2.13,<3",
 ]
