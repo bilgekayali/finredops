@@ -211,7 +211,7 @@ jobs:
           PY
 
       - name: Upload verified demo artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: finredops-verified-demo-py${{ matrix.python-version }}
           if-no-files-found: error
@@ -305,7 +305,7 @@ jobs:
           /tmp/finredops-wheel/bin/finredops verify-release-checksums --manifest dist/CHECKSUMS.sha256 --directory dist
 
       - name: Upload package smoke artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: finredops-package-smoke
           if-no-files-found: error
