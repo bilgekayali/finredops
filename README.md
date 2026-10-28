@@ -28,6 +28,16 @@ FinRedOps is **not** a general-purpose exploit framework, autonomous penetration
 tester, legal opinion, regulatory acceptance decision, independent audit, or
 compliance certificate.
 
+## Executive overview — 30 seconds
+
+**Problem:** Security teams need to explore AI-assisted testing while retaining explicit authorisation, scope boundaries, approvals, segregation of duties and defensible evidence.
+
+**Reference solution:** A governance-first orchestration and policy layer for authorised security-assessment workflows. Deterministic controls, not an AI model, decide whether proposed actions can proceed.
+
+**Inspect the work:** [Source code](src/) · [Automated tests](tests/) · [Security boundary](docs/SAFETY_BOUNDARY.md) · [Example security report](EXAMPLE_SECURITY_REPORT.md).
+
+**Status and limits:** v1.0.0 **production-reference** software, not evidence of live production penetration testing or external certification. Simulation is the default; active validation is approval-gated and limited to explicitly bounded non-production scenarios.
+
 ## Summary
 
 In regulated environments, “the AI decided to run it” is not an acceptable
